@@ -471,3 +471,64 @@ Dans le README, tu as :
 10. **Git/GitHub** → comment vous collaborez ?
 
 Comme ça, **le README devient aussi une documentation technique de référence pour les 5 membres**. Quand quelqu'un se demande *« je mets mon fichier où ? »*, il regarde le README et la réponse est claire.
+
+# 6. Le fonctionnement Git/GitHub conseillé
+
+Chaque personne travaille sur sa propre branche (`feature/eda`, `feature/ml`,
+`feature/backend`, etc.). La branche `main` contient uniquement le code validé.
+
+Avant de commencer :
+
+```bash
+git checkout main
+git pull
+git checkout TA_BRANCHE
+git merge main
+```
+
+Après le développement et les tests :
+
+```bash
+git add .
+git commit -m "feat: description du changement"
+git push -u origin TA_BRANCHE
+```
+
+Ensuite, ouvrir une **Pull Request** vers `main`. Après validation et fusion,
+les autres membres récupèrent la nouvelle version avec la même procédure.
+
+Ainsi, tout le monde commence son travail avec la dernière version validée de
+`main`, que la branche concerne l'EDA, le ML, le backend ou le dashboard.
+
+---
+
+# 9. Et surtout : ne mettez PAS chacun vos codes n'importe où 😭
+
+Par exemple le ML ne devrait pas créer :
+
+```
+awa_ml.py
+test_ml_final.py
+nouveau_ml.py
+model2.py
+```
+
+à la racine du projet.
+
+Il doit respecter l'architecture :
+
+```
+src/
+└── models/
+    ├── fraud/
+    │   ├── train.py
+    │   ├── predict.py
+    │   └── ...
+    │
+    └── credit/
+      ├── train.py
+      ├── predict.py
+      └── ...
+```
+
+C'est justement **l'architecture commune** qui permet à 5 personnes de travailler ensemble sans transformer le projet en chaos. 😂
