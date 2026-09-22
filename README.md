@@ -1,34 +1,47 @@
 # DataFlow360
 
-DataFlow360 est une plateforme de gestion des risques financiers conçue pour analyser les comportements de transactions et évaluer le risque de fraude et de défaut de paiement dans un contexte de mobile money.
+> Plateforme intelligente de détection de fraude et d'évaluation du risque de crédit dans les services de mobile money au Sénégal.
 
-Le projet vise à centraliser les données, appliquer des méthodes d'analyse avancée et produire des indicateurs utiles pour la prise de décision dans un environnement FinTech.
+---
 
-## 1. Contexte
+## Présentation
 
-Le système couvre deux problématiques principales :
+**DataFlow360** est un projet de FinTech qui vise à exploiter les données issues du mobile money afin d'améliorer la gestion des risques financiers.
 
-- Détection de fraude : identification des transactions anormales ou suspectes et attribution d'un score de risque.
-- Credit scoring : évaluation du risque de défaut d'un client à partir de son historique financier et de son comportement transactionnel.
+Le projet répond à deux problématiques principales :
+
+- 🔴 **Détection de fraude** : identifier les transactions présentant un comportement suspect et calculer un score de risque.
+- 🟡 **Credit Scoring** : évaluer le risque de défaut d'un client à partir de son comportement financier et de son historique.
+
+L'objectif est de mettre en place une solution permettant de **générer, collecter, contrôler, transformer, analyser et exploiter les données** afin d'aider à la prise de décision.
+
+> Toutes les données utilisées dans ce projet sont **synthétiques** et sont générées avec **Faker en Python** à des fins pédagogiques et de prototypage. Elles ne représentent pas des données réelles de clients sénégalais.
+
+---
 
 ## 2. Objectifs
 
 ### Détection de fraude
 
-- Collecter les transactions mobiles.
-- Suivre les tendances et anomalies de comportement.
-- Détecter les activités suspectes.
+- Générer des transactions de mobile money.
+- Analyser les comportements transactionnels.
+- Détecter les comportements inhabituels ou suspects.
 - Calculer un score de risque de fraude.
-- Mettre en place un mécanisme d'alerte.
-- Expliquer les principaux facteurs d'alerte.
+- Générer des alertes pour les transactions à risque élevé.
+- Fournir une explication des alertes.
+- Suivre les cas de fraude détectés.
 
-### Credit scoring
+### Credit Scoring
 
-- Analyser le profil financier d'un client.
-- Étudier son historique de transactions et de remboursements.
-- Déterminer les variables pertinentes pour le risque de crédit.
-- Générer un score de solvabilité.
-- Identifier les variables qui influencent le score final.
+- Générer les profils clients et leurs historiques financiers.
+- Analyser les habitudes de transaction.
+- Créer des variables comportementales.
+- Évaluer le risque de défaut.
+- Générer un score de crédit.
+- Identifier les facteurs contribuant au score.
+- Historiser les scores.
+
+---
 
 ## 3. Données
 
@@ -458,4 +471,3 @@ Dans le README, tu as :
 10. **Git/GitHub** → comment vous collaborez ?
 
 Comme ça, **le README devient aussi une documentation technique de référence pour les 5 membres**. Quand quelqu'un se demande *« je mets mon fichier où ? »*, il regarde le README et la réponse est claire.
-Chat en pau
