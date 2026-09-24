@@ -1,3 +1,6 @@
+
+# Projet-Dataflow360
+# mets ici les commandes que tu saisis pour le projet il faut tout documenter 
 # DataFlow360
 
 > Plateforme intelligente de détection de fraude et d'évaluation du risque de crédit dans les services de mobile money au Sénégal.
@@ -532,3 +535,4 @@ src/
 ```
 
 C'est justement **l'architecture commune** qui permet à 5 personnes de travailler ensemble sans transformer le projet en chaos. 😂
+
