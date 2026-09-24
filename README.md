@@ -1,7 +1,5 @@
 
 # Projet-Dataflow360
-# mets ici les commandes que tu saisis pour le projet il faut tout documenter 
-# DataFlow360
 
 > Plateforme intelligente de détection de fraude et d'évaluation du risque de crédit dans les services de mobile money au Sénégal.
 
@@ -497,7 +495,7 @@ git commit -m "feat: description du changement"
 git push -u origin TA_BRANCHE
 ```
 
-Ensuite, ouvrir une **Pull Request** vers `main`. Après validation et fusion,
+Ensuite, ouvrir une **Pull Request*Tâches* vers `main`. Après validation et fusion,
 les autres membres récupèrent la nouvelle version avec la même procédure.
 
 Ainsi, tout le monde commence son travail avec la dernière version validée de
