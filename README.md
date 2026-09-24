@@ -1,4 +1,5 @@
-# DataFlow360
+
+# Projet-Dataflow360
 
 > Plateforme intelligente de détection de fraude et d'évaluation du risque de crédit dans les services de mobile money au Sénégal.
 
@@ -134,12 +135,7 @@ DataFlow360/
 │   ├── routers/
 │   │   ├── fraud.py
 │   │   └── credit.py
-│   ├── schemas/
-│   │   ├── fraud.py
-│   │   └── credit.py
-│   └── services/
-│       ├── fraud_service.py
-│       └── credit_service.py
+│   └── schemas/
 ├── streaming/
 │   ├── producer.py
 │   └── consumer.py
@@ -181,10 +177,9 @@ Le cœur du projet, où sont implémentés les traitements, le feature engineeri
 ### api/
 Contient l'API backend exposant les services métier du projet.
 
-- `main.py` : démarre l'application FastAPI.
-- `routers/` : définit les URL et les méthodes HTTP.
-- `schemas/` : valide le format des requêtes et réponses avec Pydantic.
-- `services/` : contiendra la logique métier et les appels aux modèles.
+- main.py : point d'entrée de l'application
+- routers/ : routes des services liés à la fraude et au scoring
+- schemas/ : modèles de validation et de structuration des entrées/sorties
 
 ### streaming/
 Contient les composants de traitement en flux, notamment le producteur et le consommateur de messages.
@@ -500,7 +495,7 @@ git commit -m "feat: description du changement"
 git push -u origin TA_BRANCHE
 ```
 
-Ensuite, ouvrir une **Pull Request** vers `main`. Après validation et fusion,
+Ensuite, ouvrir une **Pull Request*Tâches* vers `main`. Après validation et fusion,
 les autres membres récupèrent la nouvelle version avec la même procédure.
 
 Ainsi, tout le monde commence son travail avec la dernière version validée de
@@ -538,3 +533,4 @@ src/
 ```
 
 C'est justement **l'architecture commune** qui permet à 5 personnes de travailler ensemble sans transformer le projet en chaos. 😂
+
