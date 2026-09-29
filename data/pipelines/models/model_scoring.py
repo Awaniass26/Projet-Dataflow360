@@ -1,5 +1,2 @@
-
 def bonjour():
     print("Bonjour")
-
-
