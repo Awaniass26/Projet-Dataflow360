@@ -2,7 +2,13 @@
 
 **DataFlow360 prépare et explore des données de mobile money afin d'étudier deux risques financiers : la fraude sur les transactions et le défaut de remboursement des crédits.** Le projet génère des historiques synthétiques, en extrait des indicateurs de comportement et les exporte en CSV pour l'analyse et la préparation de futurs modèles.
 
+
 Toutes les données sont fictives. Le projet ne prend pas de décisions financières : il n'entraîne ni ne sert encore de modèle de prédiction, et son dashboard utilise des exemples codés en dur.
+
+# Projet-Dataflow360
+
+> Plateforme intelligente de détection de fraude et d'évaluation du risque de crédit dans les services de mobile money au Sénégal.
+
 
 ## Voir le projet rapidement
 
