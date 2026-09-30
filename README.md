@@ -12,7 +12,7 @@ Toutes les données sont fictives. Le projet ne prend pas de décisions financi�
 
 ## Voir le projet rapidement
 
-L'API se lance avec Docker depuis la racine du dépôt. Docker Compose construit l'image et publie le port `8000`. lllll
+L'API se lance avec Docker depuis la racine du dépôt. Docker Compose construit l'image et publie le port `8000`.
 
 ```bash
 docker compose up --build api
