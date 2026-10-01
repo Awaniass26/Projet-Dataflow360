@@ -1,4 +1,5 @@
 
+
 # Projet-Dataflow360
 
 > Plateforme intelligente de détection de fraude et d'évaluation du risque de crédit dans les services de mobile money au Sénégal.
@@ -113,7 +114,7 @@ Le projet est structuré pour séparer les responsabilités suivantes : gestion 
 DataFlow360/
 ├── README.md
 ├── .gitignore
-├── .env.example
+├── .env.example=======
 ├── docker-compose.yml
 ├── requirements.txt
 ├── data/
@@ -533,4 +534,7 @@ src/
 ```
 
 C'est justement **l'architecture commune** qui permet à 5 personnes de travailler ensemble sans transformer le projet en chaos. 😂
+
+
+# Projet-Dataflow360
 
