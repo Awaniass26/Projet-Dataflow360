@@ -1,536 +1,131 @@
+# DataFlow360
+
+**DataFlow360 prépare et explore des données de mobile money afin d'étudier deux risques financiers : la fraude sur les transactions et le défaut de remboursement des crédits.** Le projet génère des historiques synthétiques, en extrait des indicateurs de comportement et les exporte en CSV pour l'analyse et la préparation de futurs modèles.
+
+
+Toutes les données sont fictives. Le projet ne prend pas de décisions financières : il n'entraîne ni ne sert encore de modèle de prédiction, et son dashboard utilise des exemples codés en dur.
 
 # Projet-Dataflow360
 
 > Plateforme intelligente de détection de fraude et d'évaluation du risque de crédit dans les services de mobile money au Sénégal.
 
----
 
-## Présentation
+## Voir le projet rapidement
 
-**DataFlow360** est un projet de FinTech qui vise à exploiter les données issues du mobile money afin d'améliorer la gestion des risques financiers.
+L'API se lance avec Docker depuis la racine du dépôt. Docker Compose construit l'image et publie le port `8000`.
 
-Le projet répond à deux problématiques principales :
+```bash
+docker compose up --build api
+```
 
-- 🔴 **Détection de fraude** : identifier les transactions présentant un comportement suspect et calculer un score de risque.
-- 🟡 **Credit Scoring** : évaluer le risque de défaut d'un client à partir de son comportement financier et de son historique.
+Une fois le conteneur démarré :
 
-L'objectif est de mettre en place une solution permettant de **générer, collecter, contrôler, transformer, analyser et exploiter les données** afin d'aider à la prise de décision.
+- API : <http://localhost:8000>
+- Vérification de santé : <http://localhost:8000/health>
+- Documentation interactive : <http://localhost:8000/docs>
 
-> Toutes les données utilisées dans ce projet sont **synthétiques** et sont générées avec **Faker en Python** à des fins pédagogiques et de prototypage. Elles ne représentent pas des données réelles de clients sénégalais.
+Arrêter le service avec `Ctrl+C`, puis, si nécessaire, supprimer les conteneurs avec `docker compose down`.
 
----
+## Ce que le projet analyse
 
-## 2. Objectifs
+**Risque de fraude par transaction.** Pour chaque transaction synthétique, le pipeline prépare des indicateurs tels que l'écart du montant aux habitudes du compte, l'heure inhabituelle, le nombre de transactions de la dernière heure, un nouvel appareil ou destinataire, et un changement de zone géographique. Le dataset conserve également l'étiquette de fraude générée, afin de permettre une analyse supervisée ultérieure.
 
-### Détection de fraude
+**Risque de crédit par demande.** Pour chaque demande de crédit, le pipeline résume l'activité financière antérieure du client : volumes et nombres de transactions sur 30, 60 et 90 jours, flux entrants et sortants, jours actifs, ainsi que l'historique des crédits, défauts et retards. Il conserve le montant et la durée demandés ainsi que l'étiquette de défaut générée.
 
-- Générer des transactions de mobile money.
-- Analyser les comportements transactionnels.
-- Détecter les comportements inhabituels ou suspects.
-- Calculer un score de risque de fraude.
-- Générer des alertes pour les transactions à risque élevé.
-- Fournir une explication des alertes.
-- Suivre les cas de fraude détectés.
+Les scripts produisent des jeux de données analytiques ; ils ne calculent pas encore de score prédictif. L'API actuelle répond uniquement sur `/` et `/health`, et le dashboard illustre l'interface avec des données fictives sans lire les CSV ni appeler l'API.
 
-### Credit Scoring
-
-- Générer les profils clients et leurs historiques financiers.
-- Analyser les habitudes de transaction.
-- Créer des variables comportementales.
-- Évaluer le risque de défaut.
-- Générer un score de crédit.
-- Identifier les facteurs contribuant au score.
-- Historiser les scores.
-
----
-
-## 3. Données
-
-Le projet peut s'appuyer sur plusieurs types de données :
-
-- Transactions mobile money
-- Données clients
-- Historique des crédits
-- Historique des remboursements
-- Données comportementales
-- Données synthétiques pour le prototypage et les tests
-
-> Les données synthétiques sont utilisées à des fins pédagogiques et de démonstration. Elles ne remplacent pas des données réelles de production.
-
-### Exemples de variables
-
-#### Transactions
-- Identifiant de transaction
-- Identifiant client
-- Date et heure
-- Type de transaction
-- Montant
-- Solde avant/après transaction
-- Canal de transaction
-- Destinataire
-- Localisation
-- Statut
-
-#### Clients
-- Identifiant client
-- Âge
-- Région
-- Type de compte
-- Ancienneté du compte
-- Fréquence d'utilisation
-
-#### Crédits
-- Identifiant du crédit
-- Identifiant client
-- Montant demandé
-- Durée du crédit
-- Revenus estimés
-- Dépenses
-- Historique de remboursement
-- Retards de paiement
-- Statut du crédit
-
-## 4. Pipeline de traitement des données
-
-Le pipeline suit généralement le schéma suivant :
+Le flux de préparation des données est :
 
 ```text
-Collecte des données
-    -> Stockage
-    -> Contrôle qualité
-    -> Transformation
-    -> Feature engineering
-    -> Modélisation
-    -> Analyse et exploitation
-    -> Décision / alertes
+Générateurs Python
+    -> fichiers CSV dans data/synthetic/
+    -> construction des variables dans src/features/
+    -> jeux de données dans data/processed/
+    -> exploration dans les notebooks
 ```
 
-## 5. Architecture du projet
+Les scripts de génération créent notamment 6 000 clients et 500 000 transactions synthétiques. La génération des transactions peut prendre une à deux minutes et remplace les CSV correspondants dans `data/synthetic/`.
 
-Le projet est structuré pour séparer les responsabilités suivantes : gestion des données, analyse exploratoire, modélisation, API, streaming, tableau de bord et tests.
+## Démarrer le dashboard
+
+Le dashboard est indépendant du conteneur API et utilise des données codées en dur pour la démonstration. Il ne lit pas encore les résultats de l'API.
+
+Prérequis : Python 3.10 ou supérieur. Installer ses dépendances dans l'environnement Python de votre choix :
+
+```bash
+python3 -m pip install dash plotly pandas
+```
+
+Depuis la racine du dépôt :
+
+```bash
+cd dashboard
+python3 app.py
+```
+
+Ouvrir ensuite <http://127.0.0.1:8050>. Arrêter avec `Ctrl+C`.
+
+## Générer et préparer les données
+
+Cette étape est optionnelle : les CSV synthétiques et les datasets préparés sont déjà présents dans le dépôt. Pour régénérer les données, Python 3.10 ou supérieur et les paquets `numpy`, `pandas` et `faker` sont nécessaires.
+
+```bash
+python3 -m pip install numpy pandas faker
+```
+
+Depuis la racine du dépôt, lancer les générateurs dans leur ordre prévu :
+
+```bash
+cd src/data
+python3 run_generation.py
+cd ../features
+python3 build_dataset_fraude.py
+python3 build_dataset_credit.py
+```
+
+Résultats attendus :
+
+- `data/synthetic/` : les huit tables générées, dont `clients.csv`, `transactions.csv`, `credits.csv` et `remboursements.csv`.
+- `data/processed/dataset_fraude.csv` : variables calculées pour les transactions.
+- `data/processed/dataset_credit.csv` : variables calculées pour les demandes de crédit.
+
+Pour revenir à la racine après ces commandes : `cd ../..`.
+
+## API
+
+L'API est définie dans `api/main.py` et son image Docker dans `api/Dockerfile`. Les dépendances de l'API sont dans `requirements.txt` à la racine.
+
+| Méthode | Route | Fonction actuelle |
+| --- | --- | --- |
+| `GET` | `/` | Message de bienvenue |
+| `GET` | `/health` | Indique que l'API répond |
+
+Les fichiers de routes fraude et crédit sont présents, mais ne contiennent pas encore de logique métier. L'API ne calcule donc pas encore de score de fraude ou de crédit.
+
+## Structure du dépôt
 
 ```text
-DataFlow360/
-├── README.md
-├── .gitignore
-├── .env.example
-├── docker-compose.yml
-├── requirements.txt
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── synthetic/
-├── notebooks/
-│   ├── eda_fraude.ipynb
-│   └── eda_credit.ipynb
-├── src/
-│   ├── data/
-│   ├── features/
-│   ├── models/
-│   │   ├── fraud/
-│   │   └── credit/
-│   └── utils/
-├── api/
-│   ├── main.py
-│   ├── routers/
-│   │   ├── fraud.py
-│   │   └── credit.py
-│   └── schemas/
-├── streaming/
-│   ├── producer.py
-│   └── consumer.py
-├── dashboard/
-│   ├── app.py
-│   ├── pages/
-│   │   ├── fraude.py
-│   │   └── credit.py
-│   └── components/
-├── models_store/
-├── tests/
-│   ├── test_data.py
-│   ├── test_api.py
-│   └── test_models.py
-├── docs/
-└── .github/
+api/                  API FastAPI et Dockerfile
+dashboard/            Démonstration web Dash/Plotly
+data/
+  synthetic/          CSV synthétiques
+  processed/          CSV préparés pour l'analyse
+  pipelines/models/   Emplacements de prototypes de modèles
+notebooks/            Analyses exploratoires
+src/data/             Génération des données synthétiques
+src/features/         Construction des variables et datasets
+streaming/            Fichiers réservés au streaming, encore vides
+docker-compose.yml    Démarrage du service API
+requirements.txt      Dépendances de l'API
 ```
 
-## 6. Description des composants
-
-### data/
-Le dossier de données contient les jeux de données bruts, transformés et synthétiques utilisés pour l'analyse et la modélisation.
-
-- raw/ : données brutes non altérées
-- processed/ : données nettoyées et préparées
-- synthetic/ : données générées pour le prototypage et la démonstration
-
-### notebooks/
-Contient les analyses exploratoires et les expériences de modélisation.
-
-### src/
-Le cœur du projet, où sont implémentés les traitements, le feature engineering et les modèles de machine learning.
-
-- data/ : ingestion, nettoyage et préparation des données
-- features/ : création de variables utiles à la modélisation
-- models/ : entraînement, validation et sauvegarde des modèles
-- utils/ : fonctions utilitaires et outils partagés
-
-### api/
-Contient l'API backend exposant les services métier du projet.
-
-- main.py : point d'entrée de l'application
-- routers/ : routes des services liés à la fraude et au scoring
-- schemas/ : modèles de validation et de structuration des entrées/sorties
-
-### streaming/
-Contient les composants de traitement en flux, notamment le producteur et le consommateur de messages.
-
-### dashboard/
-Regroupe les interfaces de visualisation et de supervision du projet.
-
-### tests/
-Contient les tests de validation des données, de l'API et des modèles.
-
-## 7. Exemple de flux métier
-
-```text
-Transaction
-    -> Producer
-    -> Kafka
-    -> Consumer
-    -> Modèle de fraude
-    -> Score de risque
-    -> Alerte / action
-```
-
-## 8. Prérequis
-
-Avant de lancer le projet, il est nécessaire d'avoir :
-
-- Python 3.10 ou supérieur
-- pip ou un gestionnaire d'environnement virtuel
-- Docker et Docker Compose pour les services conteneurisés
-- Accès à un environnement d'exécution compatible avec les dépendances du projet
-
-## 9. Installation
-
-1. Cloner le dépôt.
-2. Créer un environnement virtuel.
-3. Installer les dépendances.
-4. Vérifier la configuration des variables d'environnement.
-5. Lancer les services ou l'API selon le cas d'usage.
-
-Exemple :
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## 10. Utilisation
-
-Le projet peut être utilisé de plusieurs manières :
-
-- Exécution de l'API pour exposer des prédictions
-- Analyse des données via notebooks
-- Lancement du dashboard pour visualiser les résultats
-- Traitement des événements en temps réel via streaming
-- Validation avec les tests automatisés
-
-## 11. Tests
-
-Les tests du projet sont organisés pour valider les fonctions critiques sur :
-
-- les données
-- l'API
-- les modèles
-
-Commande typique :
-
-```bash
-pytest
-```
-
-## 12. Évolution du projet
-
-Les prochaines étapes peuvent inclure :
-
-- amélioration des modèles de détection de fraude
-- ajout de métriques business et de monitoring
-- mise en place d'un pipeline MLOps plus robuste
-- intégration de données temps réel
-- préparation d'une version production avec sécurité et traçabilité
-
-## 13. Licence
-
-Ce projet est fourni à des fins de démonstration et de prototypage. La licence exacte doit être confirmée selon le contexte de déploiement et les droits d'utilisation du projet.
-
-## 14. Résumé
-
-DataFlow360 a pour objectif de fournir une base solide pour la gestion intelligente du risque financier dans un environnement mobile money, avec une combinaison de données, d'analyse, de modélisation et d'outils décisionnels.
-
-
-Contient le dashboard développé avec Dash + Plotly.
-
-dashboard/
-├── app.py
-├── pages/
-│   ├── fraude.py
-│   └── credit.py
-└── components/
-app.py
-
-Point d'entrée de l'application Dashboard.
-
-pages/
-
-Contient les différentes pages du dashboard.
-
-fraude.py
-
-Interface de suivi de la fraude.
-
-Elle peut notamment afficher :
-
-nombre de transactions ;
-nombre d'alertes ;
-taux de fraude ;
-montants suspects ;
-évolution des alertes ;
-niveaux de risque ;
-transactions à risque.
-credit.py
-
-Interface dédiée au credit scoring.
-
-Elle peut notamment afficher :
-
-nombre de demandes ;
-montant moyen ;
-score moyen ;
-profils de risque ;
-taux de défaut ;
-évolution des demandes.
-components/
-
-Contient les composants réutilisables du dashboard :
-
-graphiques ;
-cartes KPI ;
-filtres ;
-tableaux ;
-éléments d'interface.
-📂 models_store/
-
-Contient les modèles de Machine Learning entraînés et sauvegardés.
-
-Exemples :
-
-models_store/
-├── fraud_model.pkl
-└── credit_model.pkl
-
-Les modèles peuvent être sauvegardés au format .pkl ou .joblib.
-
-⚠️ Les fichiers de modèles volumineux ne doivent pas nécessairement être versionnés dans Git. Ils peuvent être ajoutés au .gitignore.
-
-📂 tests/
-
-Contient les tests automatisés du projet.
-
-tests/
-├── test_data.py
-├── test_api.py
-└── test_models.py
-test_data.py
-
-Teste les traitements et contrôles liés aux données.
-
-test_api.py
-
-Teste les endpoints et comportements de l'API.
-
-test_models.py
-
-Teste les modèles et leurs fonctions de prédiction.
-
-📂 docs/
-
-Contient la documentation et les livrables du projet.
-
-On peut notamment y retrouver :
-
-documentation du cadrage ;
-besoins fonctionnels ;
-cycle de vie des données ;
-architecture ;
-diagrammes ;
-conception ;
-choix technologiques ;
-organisation de l'équipe ;
-documentation technique ;
-supports de présentation.
-🔄 Circulation globale des données
-
-La circulation des données dans DataFlow360 peut être représentée de manière simplifiée comme suit :
-
-                    SOURCES DE DONNÉES
-                           │
-                           ▼
-              ┌────────────────────────┐
-              │      Acquisition       │
-              │   Batch / Streaming    │
-              └───────────┬────────────┘
-                          │
-             ┌────────────┴────────────┐
-             ▼                         ▼
-       Données brutes            Kafka Streaming
-       data/raw/                      │
-             │                        ▼
-             │                 Détection fraude
-             │                        │
-             ▼                        ▼
-       Contrôle qualité          Score de risque
-             │                        │
-             ▼                        ▼
-       Transformation              Alerte
-             │
-             ▼
-       Feature Engineering
-             │
-       ┌─────┴─────┐
-       ▼           ▼
-    Modèle       Modèle
-    Fraude       Crédit
-       │           │
-       └─────┬─────┘
-             ▼
-          FastAPI
-             │
-             ▼
-       Dash + Plotly
-             │
-             ▼
-      Analyse / Décision
-🔗 Interaction entre les composants
-
-Les principaux composants du projet communiquent de la manière suivante :
-
-Data
- ↓
-Data Engineering
- ↓
-Feature Engineering
- ↓
-Machine Learning
- ↓
-FastAPI
- ↓
-Dashboard
-
-Pour la détection de fraude, Kafka intervient dans le flux :
-
-Transaction
- ↓
-Kafka
- ↓
-Modèle de fraude
- ↓
-FastAPI
- ↓
-Dashboard / Alerte
-
-Pour les traitements batch et le réentraînement des modèles, Airflow intervient dans l'orchestration :
-
-Collecte
- ↓
-Qualité
- ↓
-Transformation
- ↓
-Feature Engineering
- ↓
-Entraînement
- ↓
-Évaluation
- ↓
-Mise à jour du modèle
-
-### Et oui, je ferais **exactement cette distinction**
-
-Dans le README, tu as :
-
-1. **Présentation** → c'est quoi DataFlow360 ?
-2. **Objectifs** → quels problèmes vous résolvez ?
-3. **Données** → quelles données ?
-4. **Architecture** → comment le projet est organisé ?
-5. **Description de chaque dossier** → qui contient quoi ?
-6. **Circulation des données** → comment les composants communiquent ?
-7. **Technologies** → pourquoi elles sont là ?
-8. **Installation** → comment lancer le projet ?
-9. **Équipe** → qui fait quoi ?
-10. **Git/GitHub** → comment vous collaborez ?
-
-Comme ça, **le README devient aussi une documentation technique de référence pour les 5 membres**. Quand quelqu'un se demande *« je mets mon fichier où ? »*, il regarde le README et la réponse est claire.
-
-# 6. Le fonctionnement Git/GitHub conseillé
-
-Chaque personne travaille sur sa propre branche (`feature/eda`, `feature/ml`,
-`feature/backend`, etc.). La branche `main` contient uniquement le code validé.
-
-Avant de commencer :
-
-```bash
-git checkout main
-git pull
-git checkout TA_BRANCHE
-git merge main
-```
-
-Après le développement et les tests :
-
-```bash
-git add .
-git commit -m "feat: description du changement"
-git push -u origin TA_BRANCHE
-```
-
-Ensuite, ouvrir une **Pull Request*Tâches* vers `main`. Après validation et fusion,
-les autres membres récupèrent la nouvelle version avec la même procédure.
-
-Ainsi, tout le monde commence son travail avec la dernière version validée de
-`main`, que la branche concerne l'EDA, le ML, le backend ou le dashboard.
-
----
-
-# 9. Et surtout : ne mettez PAS chacun vos codes n'importe où 😭
-
-Par exemple le ML ne devrait pas créer :
-
-```
-awa_ml.py
-test_ml_final.py
-nouveau_ml.py
-model2.py
-```
-
-à la racine du projet.
-
-Il doit respecter l'architecture :
-
-```
-src/
-└── models/
-    ├── fraud/
-    │   ├── train.py
-    │   ├── predict.py
-    │   └── ...
-    │
-    └── credit/
-      ├── train.py
-      ├── predict.py
-      └── ...
-```
-
-C'est justement **l'architecture commune** qui permet à 5 personnes de travailler ensemble sans transformer le projet en chaos. 😂
-
+## État actuel et limites
+
+- **Données :** données synthétiques destinées au prototypage, jamais des informations réelles de clients.
+- **Dashboard :** démonstration visuelle à données fictives, non connectée à l'API.
+- **API :** seule la route d'accueil et la route `/health` sont actives.
+- **Machine learning :** les scripts de modèles sont des exemples incomplets ou commentés ; aucune prédiction n'est servie.
+- **Streaming :** les fichiers présents ne mettent pas encore en place de flux Kafka opérationnel.
+- **Configuration :** aucun fichier `.env` n'est nécessaire pour lancer l'API actuelle.
+
+Le projet est donc une base de démonstration et de développement, pas encore un système de décision financière prêt pour la production.
