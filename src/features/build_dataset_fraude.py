@@ -8,7 +8,8 @@ feature engineering partagé (features.py), puis écrit le résultat.
 C'est le schéma complet demandé par le groupe :
     Génération → PostgreSQL (source) → Extraction (ce script) → dataset_fraude.csv
 
-Prérequis : docker-compose up -d, puis python load_all.py (au moins une fois)
+Prérequis : PostgreSQL et MongoDB doivent être démarrés séparément, puis
+python load_all.py doit avoir été exécuté au moins une fois.
 Usage     : python build_dataset_fraude.py
 """
 
