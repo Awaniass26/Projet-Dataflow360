@@ -101,6 +101,8 @@ def generate_clients(rng: random.Random | None = None) -> list[Client]:
             sexe=rng.choice(SEXES),
             region=rng.choice(REGIONS),
             account_type=rng.choice(ACCOUNT_TYPES),
+            created_at=DATASET_REFERENCE_TIME - timedelta(days=rng.randint(0, 365)),
+            data_origin="synthetic",
         )
 
         clients.append(client)
@@ -144,6 +146,7 @@ def generate_transactions(
                 type=rng.choice(TRANSACTION_TYPES),
                 channel=rng.choice(CHANNELS),
                 occurred_at=occurred_at,
+                data_origin="synthetic",
             )
 
             transactions.append(transaction)
@@ -186,6 +189,7 @@ def generate_fraud_alerts(
             risk_score=risk_score,
             risk_level=risk_level,
             created_at=transaction.occurred_at,
+            data_origin="synthetic",
         )
 
         alerts.append(alert)
@@ -237,6 +241,7 @@ def generate_credit_applications(
                 ),
                 income=income,
                 expenses=expenses,
+                data_origin="synthetic",
             )
 
             applications.append(application)
@@ -288,6 +293,7 @@ def generate_credit_scores(
             risk_score=risk_score,
             risk_level=risk_level,
             created_at=DATASET_REFERENCE_TIME,
+            data_origin="synthetic",
         )
 
         scores.append(score)
@@ -361,11 +367,11 @@ def insert_data(
             text(
                 """
                 SELECT setval(
-                    pg_get_serial_sequence('fraud_alerts', 'alert_id'),
+                    pg_get_serial_sequence('api_fraud_alerts', 'alert_id'),
                     COALESCE(MAX(alert_id), 1),
                     COUNT(*) > 0
                 )
-                FROM fraud_alerts
+                FROM api_fraud_alerts
                 """
             )
         )
@@ -373,11 +379,11 @@ def insert_data(
             text(
                 """
                 SELECT setval(
-                    pg_get_serial_sequence('credit_scores', 'id'),
+                    pg_get_serial_sequence('api_credit_scores', 'id'),
                     COALESCE(MAX(id), 1),
                     COUNT(*) > 0
                 )
-                FROM credit_scores
+                FROM api_credit_scores
                 """
             )
         )
