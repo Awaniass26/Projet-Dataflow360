@@ -4,7 +4,7 @@ src/data/load_mongodb.py
 Insère dans MongoDB les données semi-structurées / logs : appareils,
 activites, historique_etat_compte.
 
-Prérequis : docker-compose up -d   (au moins le service mongodb)
+Prérequis : MongoDB doit être démarré séparément.
 Usage     : python load_mongodb.py
 """
 
