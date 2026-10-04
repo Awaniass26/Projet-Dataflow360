@@ -1,8 +1,15 @@
-"""Modèles SQLAlchemy des tables PostgreSQL de DataFlow360."""
+"""Modèles SQLAlchemy correspondant au schéma PostgreSQL de DataFlow360."""
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -13,137 +20,129 @@ class Base(DeclarativeBase):
 class Client(Base):
     """Client mobile money."""
 
-    __tablename__ = "clients"
+    __tablename__ = "api_clients"
 
-    client_id: Mapped[str] = mapped_column(
-        String(64),
-        primary_key=True,
-    )
+    client_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     age: Mapped[int] = mapped_column(Integer)
     sexe: Mapped[str] = mapped_column(String(20))
     region: Mapped[str] = mapped_column(String(100))
     account_type: Mapped[str] = mapped_column(String(50))
-
-    transactions: Mapped[list["Transaction"]] = relationship(
-        back_populates="client",
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(), nullable=True
+    )
+    data_origin: Mapped[str] = mapped_column(
+        String(24), server_default="unknown"
     )
 
+    transactions: Mapped[list["Transaction"]] = relationship(
+        back_populates="client"
+    )
     credit_applications: Mapped[list["CreditApplication"]] = relationship(
-        back_populates="client",
+        back_populates="client"
     )
 
 
 class Transaction(Base):
     """Transaction mobile money."""
 
-    __tablename__ = "transactions"
+    __tablename__ = "api_transactions"
 
-    transaction_id: Mapped[str] = mapped_column(
-        String(64),
-        primary_key=True,
-    )
+    transaction_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     client_id: Mapped[str] = mapped_column(
-        ForeignKey("clients.client_id"),
-        index=True,
+        ForeignKey("api_clients.client_id"), index=True
     )
     amount: Mapped[float] = mapped_column(Float)
     type: Mapped[str] = mapped_column(String(30))
     channel: Mapped[str] = mapped_column(String(30))
     occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        index=True,
+        DateTime(), index=True
+    )
+    data_origin: Mapped[str] = mapped_column(
+        String(24), server_default="unknown"
     )
 
-    client: Mapped["Client"] = relationship(
-        back_populates="transactions",
-    )
-
+    client: Mapped["Client"] = relationship(back_populates="transactions")
     fraud_alert: Mapped["FraudAlert | None"] = relationship(
-        back_populates="transaction",
-        uselist=False,
+        back_populates="transaction", uselist=False
     )
 
 
 class FraudAlert(Base):
     """Alerte générée par le système de détection de fraude."""
 
-    __tablename__ = "fraud_alerts"
+    __tablename__ = "api_fraud_alerts"
 
     alert_id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
+        Integer, primary_key=True, autoincrement=True
     )
     transaction_id: Mapped[str] = mapped_column(
-        ForeignKey("transactions.transaction_id"),
+        ForeignKey("api_transactions.transaction_id"),
         unique=True,
         index=True,
     )
     risk_score: Mapped[float] = mapped_column(Float)
     risk_level: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
+        DateTime(), server_default=func.now()
+    )
+    data_origin: Mapped[str] = mapped_column(
+        String(24), server_default="unknown"
     )
 
     transaction: Mapped["Transaction"] = relationship(
-        back_populates="fraud_alert",
+        back_populates="fraud_alert"
     )
 
 
 class CreditApplication(Base):
     """Demande de crédit."""
 
-    __tablename__ = "credit_applications"
+    __tablename__ = "api_credit_applications"
 
-    application_id: Mapped[str] = mapped_column(
-        String(64),
-        primary_key=True,
-    )
+    application_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     client_id: Mapped[str] = mapped_column(
-        ForeignKey("clients.client_id"),
-        index=True,
+        ForeignKey("api_clients.client_id"), index=True
     )
     requested_amount: Mapped[float] = mapped_column(Float)
     duration: Mapped[int] = mapped_column(Integer)
     income: Mapped[float] = mapped_column(Float)
     expenses: Mapped[float] = mapped_column(Float)
-
-    client: Mapped["Client"] = relationship(
-        back_populates="credit_applications",
+    data_origin: Mapped[str] = mapped_column(
+        String(24), server_default="unknown"
     )
 
+    client: Mapped["Client"] = relationship(
+        back_populates="credit_applications"
+    )
     credit_score: Mapped["CreditScore | None"] = relationship(
-        back_populates="application",
-        uselist=False,
+        back_populates="application", uselist=False
     )
 
 
 class CreditScore(Base):
     """Score de risque associé à une demande de crédit."""
 
-    __tablename__ = "credit_scores"
+    __tablename__ = "api_credit_scores"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True,
+        Integer, primary_key=True, autoincrement=True
     )
     application_id: Mapped[str] = mapped_column(
-        ForeignKey("credit_applications.application_id"),
+        ForeignKey("api_credit_applications.application_id"),
         unique=True,
         index=True,
     )
     risk_score: Mapped[float] = mapped_column(Float)
     risk_level: Mapped[str | None] = mapped_column(
-        String(20),
-        nullable=True,
+        String(20), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
+        DateTime(), server_default=func.now()
+    )
+    data_origin: Mapped[str] = mapped_column(
+        String(24), server_default="unknown"
     )
 
     application: Mapped["CreditApplication"] = relationship(
-        back_populates="credit_score",
+        back_populates="credit_score"
     )
