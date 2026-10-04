@@ -80,19 +80,37 @@ class FraudDetectionService:
             message="Score de risque calculé par le modèle de détection de fraude.",
         )
 
+    
     def _build_feature_vector(self, transaction: TransactionInput) -> pd.DataFrame:
-        """Construit les colonnes nommées attendues par le pipeline ML."""
+        """Construit les features au format attendu par le modèle de fraude."""
+        type_mapping = {
+            "deposit": "dépôt",
+            "withdrawal": "retrait",
+            "transfer": "transfert",
+            "payment": "paiement",
+        }
+
+        channel_mapping = {
+            "mobile_app": "app",
+            "ussd": "USSD",
+            "agent": "agent",
+        }
+
         values = {
             "montant": transaction.amount,
             "heure": transaction.hour,
             "ecart_montant_moyen": transaction.ecart_montant_moyen,
             "ecart_heure_habituelle": transaction.ecart_heure_habituelle,
-            "nouvel_appareil": transaction.nouvel_appareil,
-            "nouveau_destinataire": transaction.nouveau_destinataire,
-            "type": transaction.transaction_type.value,
-            "canal": transaction.channel.value,
+            "nouvel_appareil": int(transaction.nouvel_appareil),
+            "nouveau_destinataire": int(transaction.nouveau_destinataire),
+            "type": type_mapping[transaction.transaction_type.value],
+            "canal": channel_mapping[transaction.channel.value],
         }
-        return pd.DataFrame([[values[name] for name in self._contract.feature_names]], columns=self._contract.feature_names)
+
+        return pd.DataFrame(
+            [[values[name] for name in self._contract.feature_names]],
+            columns=self._contract.feature_names,
+        )
 
     @staticmethod
     def _score_to_risk_level(score: float, threshold: float) -> RiskLevel:
