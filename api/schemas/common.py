@@ -39,6 +39,15 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 
 
+class FraudAlertStatus(StrEnum):
+    """Statuts possibles d'une alerte de fraude."""
+
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+    CONFIRMED = "confirmed"
+    DISMISSED = "dismissed"
+
+
 # Réponses d'erreur communes, pour la documentation OpenAPI (/docs).
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: {"model": ErrorResponse, "description": "Requête invalide."},

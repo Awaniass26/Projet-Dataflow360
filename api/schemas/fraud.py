@@ -11,7 +11,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from api.schemas.common import ProcessingStatus, RiskLevel
+from api.schemas.common import ProcessingStatus, RiskLevel , FraudAlertStatus
 
 
 class TransactionType(StrEnum):
@@ -73,18 +73,38 @@ class FraudPredictionResponse(BaseModel):
 
 
 class FraudAlertResponse(BaseModel):
-    """Une alerte de fraude persistée.
-
-    LIMITE ACTUELLE : tant que `DATABASE_URL` n'est pas configuré, la route
-    `GET /fraud/alerts` renvoie une erreur explicite plutôt qu'une liste
-    vide ou inventée (voir `api/routers/fraud.py`).
-    """
+    """Une alerte de fraude persistée."""
 
     alert_id: int
     transaction_id: str
     risk_score: float
     risk_level: RiskLevel
+    status: FraudAlertStatus
+    explanation: str | None = None
+    reviewed_at: datetime | None = None
+    reviewed_by: str | None = None
     created_at: datetime
+
+
+class FraudAlertUpdate(BaseModel):
+    """Données permettant à un analyste de traiter une alerte."""
+
+    status: FraudAlertStatus
+    reviewed_by: str = Field(..., min_length=1, max_length=100)
+    explanation: str | None = Field(
+        default=None,
+        max_length=1000,
+    )
+
+
+class FraudAlertListResponse(BaseModel):
+    """Réponse paginée des alertes de fraude."""
+
+    items: list[FraudAlertResponse]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
 
 
 class FraudAlertEvolutionPoint(BaseModel):
@@ -107,5 +127,9 @@ class FraudStatsResponse(BaseModel):
         )
     )
     suspicious_amount: float
+    alerts_by_status: dict[str, int]
     alerts_by_risk_level: dict[str, int]
     alerts_evolution: list[FraudAlertEvolutionPoint]
+
+
+

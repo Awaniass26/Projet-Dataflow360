@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    Text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -73,20 +74,51 @@ class FraudAlert(Base):
     __tablename__ = "api_fraud_alerts"
 
     alert_id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
+        Integer,
+        primary_key=True,
+        autoincrement=True,
     )
+
     transaction_id: Mapped[str] = mapped_column(
         ForeignKey("api_transactions.transaction_id"),
         unique=True,
         index=True,
     )
+
     risk_score: Mapped[float] = mapped_column(Float)
+
     risk_level: Mapped[str] = mapped_column(String(20))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(), server_default=func.now()
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
     )
+
+    explanation: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    reviewed_by: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
     data_origin: Mapped[str] = mapped_column(
-        String(24), server_default="unknown"
+        String(24),
+        server_default="unknown",
     )
 
     transaction: Mapped["Transaction"] = relationship(
@@ -114,10 +146,9 @@ class CreditApplication(Base):
     client: Mapped["Client"] = relationship(
         back_populates="credit_applications"
     )
-    credit_score: Mapped["CreditScore | None"] = relationship(
-        back_populates="application", uselist=False
+    credit_scores: Mapped[list["CreditScore"]] = relationship(
+        back_populates="application"
     )
-
 
 class CreditScore(Base):
     """Score de risque associé à une demande de crédit."""
@@ -129,7 +160,6 @@ class CreditScore(Base):
     )
     application_id: Mapped[str] = mapped_column(
         ForeignKey("api_credit_applications.application_id"),
-        unique=True,
         index=True,
     )
     risk_score: Mapped[float] = mapped_column(Float)
@@ -144,5 +174,11 @@ class CreditScore(Base):
     )
 
     application: Mapped["CreditApplication"] = relationship(
-        back_populates="credit_score"
+        back_populates="credit_scores"
+    )
+    model_version: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="simulation",
+        server_default="simulation",
     )
