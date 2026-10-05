@@ -1,22 +1,21 @@
-/**
- * Hooks React Query pour les clients
- * Centralise le fetching + cache + états de chargement
- */
-
 import { useQuery } from "@tanstack/react-query";
-import { getClients, getClientById } from "@/services/clients";
 
-export function useClients() {
+import {
+  getClients,
+  getClientById,
+} from "@/services/clients";
+
+export function useClients(limit = 50) {
   return useQuery({
-    queryKey: ["clients"],
-    queryFn: getClients,
+    queryKey: ["clients", limit],
+    queryFn: () => getClients(limit),
   });
 }
 
-export function useClient(id: number) {
+export function useClient(clientId: string | undefined) {
   return useQuery({
-    queryKey: ["clients", id],
-    queryFn: () => getClientById(id),
-    enabled: !!id, // ne lance la requête que si l'id est valide
+    queryKey: ["clients", clientId],
+    queryFn: () => getClientById(clientId as string),
+    enabled: Boolean(clientId),
   });
 }

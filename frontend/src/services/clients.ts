@@ -1,31 +1,70 @@
 /**
- * Service Clients — appels vers l'API FastAPI
- * ===========================================
- * Ces fonctions remplacent les anciens mocks.
- * Elles appellent les endpoints /api/clients et /api/scoring du backend.
+ * Services Clients / Crédit
+ *
+ * Tous les endpoints correspondent au contrat FastAPI.
  */
+
 import api from "./api";
-import type { Client, ClientDetail, ScoringFormData } from "@/types/client";
 
-/** Récupère la liste des clients (scores + activité) */
-export async function getClients(): Promise<Client[]> {
-  const { data } = await api.get<Client[]>("clients");
-  return data;
-}
+import type {
+  Client,
+  ClientDetail,
+  CreditApplicationInput,
+  CreditScoreResponse,
+} from "@/types/client";
 
-/** Fiche détaillée d'un client (id numérique = suffixe de CL000001) */
-export async function getClientById(id: number): Promise<ClientDetail> {
-  const { data } = await api.get<ClientDetail>(`clients/${id}`);
-  return data;
-}
-
-/** Envoie le formulaire de scoring crédit et récupère le score calculé */
-export async function submitScoringForm(
-  formData: ScoringFormData
-): Promise<{ success: boolean; score: number; clientId: number }> {
-  const { data } = await api.post<{ success: boolean; score: number; clientId: number }>(
-    "scoring",
-    formData
+/**
+ * GET /clients
+ */
+export async function getClients(
+  limit = 50
+): Promise<Client[]> {
+  const { data } = await api.get<Client[]>(
+    "/clients",
+    {
+      params: { limit },
+    }
   );
+
+  return data;
+}
+
+/**
+ * GET /clients/{client_id}
+ */
+export async function getClientById(
+  clientId: string
+): Promise<ClientDetail> {
+  const { data } = await api.get<ClientDetail>(
+    `/clients/${encodeURIComponent(clientId)}`
+  );
+
+  return data;
+}
+
+/**
+ * POST /credit/score
+ */
+export async function submitCreditScore(
+  application: CreditApplicationInput
+): Promise<CreditScoreResponse> {
+  const { data } = await api.post<CreditScoreResponse>(
+    "/credit/score",
+    application
+  );
+
+  return data;
+}
+
+/**
+ * GET /credit/score/{application_id}
+ */
+export async function getCreditScore(
+  applicationId: string
+): Promise<CreditScoreResponse> {
+  const { data } = await api.get<CreditScoreResponse>(
+    `/credit/score/${encodeURIComponent(applicationId)}`
+  );
+
   return data;
 }

@@ -1,147 +1,229 @@
-/**
- * Page Détail client — score, KPI, explication IA, historique
- */
+import { Link, useParams } from "react-router-dom";
 
-import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Card, CardTitle, CardValue } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Loading, ErrorMessage } from "@/components/ui/Loading";
 import { useClient } from "@/hooks/useClients";
 import { formatAmount } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ArrowLeft } from "lucide-react";
 
 export function ClientDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const clientId = Number(id);
-  const { data: client, isLoading, error } = useClient(clientId);
+  const { id } = useParams<{
+    id: string;
+  }>();
 
-  if (isLoading) return <Loading message="Chargement du client..." />;
-  if (error || !client) return <ErrorMessage message="Client introuvable." />;
+  const {
+    data: client,
+    isLoading,
+    error,
+  } = useClient(id);
+
+  if (isLoading) {
+    return (
+      <Loading message="Chargement du client..." />
+    );
+  }
+
+  if (error || !client) {
+    return (
+      <ErrorMessage message="Client introuvable." />
+    );
+  }
 
   return (
     <div>
-      <Link to="/clients" className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
+      <Link
+        to="/clients"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+      >
         <ArrowLeft className="h-4 w-4" />
-        Retour à l'historique
+        Retour aux clients
       </Link>
 
       <Header
-        title={client.name}
-        subtitle={client.phone}
-        actions={<Badge variant="risk" value={client.risk} className="text-sm px-3 py-1">Risque {client.risk}</Badge>}
+        title={client.client_id}
+        subtitle={`Client ${client.client_id}`}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Score */}
-        <Card className="flex flex-col items-center justify-center text-center">
-          <p className="text-sm font-medium text-gray-500">Score de crédit</p>
-          <p className="mt-2 text-5xl font-bold text-primary-600">{client.score}</p>
-          <p className="mt-2 text-sm text-gray-400">sur 1000</p>
+        <Card>
+          <CardTitle>Identifiant</CardTitle>
+          <CardValue className="text-2xl">
+            {client.client_id}
+          </CardValue>
         </Card>
 
-        {/* Infos */}
-        <Card className="lg:col-span-2">
-          <h3 className="mb-4 text-base font-semibold text-gray-900">Informations</h3>
-          <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+        <Card>
+          <CardTitle>Âge</CardTitle>
+          <CardValue>
+            {client.age}
+          </CardValue>
+        </Card>
+
+        <Card>
+          <CardTitle>Sexe</CardTitle>
+          <CardValue>
+            {client.sexe}
+          </CardValue>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <h3 className="mb-4 text-base font-semibold text-gray-900">
+            Informations du compte
+          </h3>
+
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <dt className="text-gray-500">Ville</dt>
-              <dd className="mt-1 font-medium text-gray-900">{client.city || "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Ancienneté compte</dt>
-              <dd className="mt-1 font-medium text-gray-900">{client.accountAgeMonths ? `${client.accountAgeMonths} mois` : "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Inscription scoring</dt>
+              <dt className="text-sm text-gray-500">
+                Région
+              </dt>
+
               <dd className="mt-1 font-medium text-gray-900">
-                {new Date(client.registeredAt).toLocaleDateString("fr-FR")}
+                {client.region}
               </dd>
             </div>
+
             <div>
-              <dt className="text-gray-500">Transactions</dt>
-              <dd className="mt-1 font-medium text-gray-900">{client.totalTransactions}</dd>
+              <dt className="text-sm text-gray-500">
+                Type de compte
+              </dt>
+
+              <dd className="mt-1 font-medium text-gray-900">
+                {client.account_type}
+              </dd>
             </div>
+
             <div>
-              <dt className="text-gray-500">Montant moyen</dt>
-              <dd className="mt-1 font-medium text-gray-900">{formatAmount(client.averageAmount)}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Email</dt>
-              <dd className="mt-1 font-medium text-gray-900">{client.email || "—"}</dd>
+              <dt className="text-sm text-gray-500">
+                Nombre de transactions
+              </dt>
+
+              <dd className="mt-1 font-medium text-gray-900">
+                {client.transactions.length}
+              </dd>
             </div>
           </dl>
         </Card>
 
-        {/* KPI client */}
-        <Card className="lg:col-span-3">
-          <h3 className="mb-4 text-base font-semibold text-gray-900">KPI comportementaux</h3>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <CardTitle>Dépôts / mois</CardTitle>
-              <CardValue className="text-2xl">{client.kpis.depositFrequency}</CardValue>
+        <Card className="lg:col-span-2">
+          <h3 className="mb-4 text-base font-semibold text-gray-900">
+            Transactions
+          </h3>
+
+          {client.transactions.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Aucune transaction.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="px-3 py-2 text-left text-xs text-gray-500">
+                      ID
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs text-gray-500">
+                      Type
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs text-gray-500">
+                      Canal
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-500">
+                      Montant
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {client.transactions.map(
+                    (transaction) => (
+                      <tr
+                        key={
+                          transaction.transaction_id
+                        }
+                        className="border-b"
+                      >
+                        <td className="px-3 py-3 text-sm">
+                          {transaction.transaction_id}
+                        </td>
+
+                        <td className="px-3 py-3 text-sm">
+                          {transaction.type}
+                        </td>
+
+                        <td className="px-3 py-3 text-sm">
+                          {transaction.channel}
+                        </td>
+
+                        <td className="px-3 py-3 text-right text-sm font-medium">
+                          {formatAmount(
+                            transaction.amount
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
             </div>
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <CardTitle>Retraits / mois</CardTitle>
-              <CardValue className="text-2xl">{client.kpis.withdrawalFrequency}</CardValue>
-            </div>
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <CardTitle>Solde moyen</CardTitle>
-              <CardValue className="text-xl">{formatAmount(client.kpis.averageBalance)}</CardValue>
-            </div>
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <CardTitle>Tx échouées</CardTitle>
-              <CardValue className="text-2xl">{client.kpis.failedTransactions}</CardValue>
-            </div>
-            <div className="rounded-lg bg-gray-50 p-4 text-center">
-              <CardTitle>Contreparties</CardTitle>
-              <CardValue className="text-2xl">{client.kpis.uniqueCounterparties}</CardValue>
-            </div>
-          </div>
+          )}
         </Card>
 
-        {/* Explication IA */}
-        <Card className="lg:col-span-3">
-          <h3 className="mb-3 text-base font-semibold text-gray-900">Explication du score (IA)</h3>
-          <p className="text-sm leading-relaxed text-gray-700">{client.explanation}</p>
-        </Card>
+        <Card>
+          <h3 className="mb-4 text-base font-semibold text-gray-900">
+            Demandes de crédit
+          </h3>
 
-        {/* Historique score */}
-        {client.scoreHistory.length > 0 && (
-          <Card className="lg:col-span-2">
-            <h3 className="mb-4 text-base font-semibold text-gray-900">Évolution du score</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={client.scoreHistory}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis domain={["dataMin - 30", "dataMax + 30"]} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        )}
+          {client.credit_applications.length ===
+          0 ? (
+            <p className="text-sm text-gray-500">
+              Aucune demande de crédit.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {client.credit_applications.map(
+                (application) => (
+                  <div
+                    key={
+                      application.application_id
+                    }
+                    className="rounded-lg border p-4"
+                  >
+                    <p className="text-sm font-medium">
+                      {application.application_id}
+                    </p>
 
-        {/* Transactions */}
-        {client.recentTransactions.length > 0 && (
-          <Card>
-            <h3 className="mb-4 text-base font-semibold text-gray-900">Transactions récentes</h3>
-            <ul className="space-y-3">
-              {client.recentTransactions.map((tx) => (
-                <li key={tx.id} className="flex items-center justify-between text-sm">
-                  <div>
-                    <p className="font-medium text-gray-900 capitalize">{tx.type}</p>
-                    <p className="text-gray-500">{new Date(tx.date).toLocaleDateString("fr-FR")}</p>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Montant :{" "}
+                      {formatAmount(
+                        application.requested_amount
+                      )}
+                    </p>
+
+                    <p className="text-sm text-gray-600">
+                      Durée :{" "}
+                      {application.duration} mois
+                    </p>
+
+                    <p className="text-sm text-gray-600">
+                      Revenus :{" "}
+                      {formatAmount(
+                        application.income
+                      )}
+                    </p>
+
+                    <p className="text-sm text-gray-600">
+                      Dépenses :{" "}
+                      {formatAmount(
+                        application.expenses
+                      )}
+                    </p>
                   </div>
-                  <span className="font-medium text-gray-900">{formatAmount(tx.amount)}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
+                )
+              )}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );

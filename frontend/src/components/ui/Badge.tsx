@@ -1,27 +1,26 @@
 /**
- * Badge de statut / risque
+ * Badge de niveau de risque / statut d'alerte
  */
 
 import { cn } from "@/lib/utils";
-import type { RiskLevel } from "@/types/client";
-import type { FraudSeverity } from "@/types/fraud";
+import type { FraudStatus, RiskLevel } from "@/types/fraud";
 
 const riskStyles: Record<RiskLevel, string> = {
-  faible: "bg-green-50 text-green-700 ring-green-600/20",
-  moyen: "bg-orange-50 text-orange-700 ring-orange-600/20",
-  élevé: "bg-red-50 text-red-700 ring-red-600/20",
+  low: "bg-green-50 text-green-700 ring-green-600/20",
+  medium: "bg-orange-50 text-orange-700 ring-orange-600/20",
+  high: "bg-red-50 text-red-700 ring-red-600/20",
 };
 
-const severityStyles: Record<FraudSeverity, string> = {
-  basse: "bg-blue-50 text-blue-700 ring-blue-600/20",
-  moyenne: "bg-orange-50 text-orange-700 ring-orange-600/20",
-  haute: "bg-red-50 text-red-700 ring-red-600/20",
-  critique: "bg-red-100 text-red-800 ring-red-600/30 font-semibold",
+const statusStyles: Record<FraudStatus, string> = {
+  pending: "bg-orange-50 text-orange-700 ring-orange-600/20",
+  reviewed: "bg-blue-50 text-blue-700 ring-blue-600/20",
+  confirmed: "bg-red-50 text-red-700 ring-red-600/20",
+  dismissed: "bg-gray-100 text-gray-600 ring-gray-500/20",
 };
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: "risk" | "severity" | "default";
+  variant?: "risk" | "status" | "default";
   value?: string;
   className?: string;
 }
@@ -30,10 +29,10 @@ export function Badge({ children, variant = "default", value, className }: Badge
   let styles = "bg-gray-50 text-gray-700 ring-gray-600/20";
 
   if (variant === "risk" && value) {
-    styles = riskStyles[value as RiskLevel] || styles;
+    styles = riskStyles[value as RiskLevel] ?? styles;
   }
-  if (variant === "severity" && value) {
-    styles = severityStyles[value as FraudSeverity] || styles;
+  if (variant === "status" && value) {
+    styles = statusStyles[value as FraudStatus] ?? styles;
   }
 
   return (

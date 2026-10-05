@@ -1,79 +1,69 @@
 /**
  * Page Alertes de fraude
- * - KPI
- * - Filtres par jour / mois / année
- * - Affiche 5 alertes puis scroll (voir plus)
+ * - KPI issus de GET /fraud/stats
+ * - Liste paginée et filtrée côté serveur (GET /fraud/alerts)
+ * - Changement de statut d'une alerte (PATCH /fraud/alerts/{id})
  */
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import axios from "axios";
 import { Header } from "@/components/layout/Header";
 import { Card, CardTitle, CardValue } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Loading, ErrorMessage } from "@/components/ui/Loading";
-import { useFraudAlerts, useFraudStats } from "@/hooks/useFraud";
-import { formatAmount } from "@/lib/utils";
-import type { FraudSeverity, FraudStatus } from "@/types/fraud";
-import { Search } from "lucide-react";
+import {
+  useFraudAlerts,
+  useFraudStats,
+  useUpdateFraudAlert,
+} from "@/hooks/useFraud";
+import {
+  FRAUD_STATUSES,
+  RISK_LABELS,
+  RISK_LEVELS,
+  STATUS_LABELS,
+} from "@/lib/labels";
+import type { FraudStatus, RiskLevel } from "@/types/fraud";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
 
-type Period = "jour" | "mois" | "année" | "tout";
+// Nom enregistré dans "reviewed_by" tant qu'il n'y a pas d'authentification réelle
+const REVIEWER = "analyste";
+
+function getErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const apiMessage = err.response?.data?.error?.message;
+    if (typeof apiMessage === "string") return apiMessage;
+    if (err.code === "ERR_NETWORK") return "Impossible de joindre l'API.";
+  }
+  return err instanceof Error ? err.message : "Une erreur est survenue.";
+}
 
 export function FraudAlertsPage() {
-  const { data: alerts, isLoading: alertsLoading, error: alertsError } = useFraudAlerts();
-  const { data: stats, isLoading: statsLoading } = useFraudStats();
-
-  const [period, setPeriod] = useState<Period>("tout");
-  const [severity, setSeverity] = useState<FraudSeverity | "all">("all");
+  const [page, setPage] = useState(1);
+  const [riskLevel, setRiskLevel] = useState<RiskLevel | "all">("all");
   const [status, setStatus] = useState<FraudStatus | "all">("all");
-  const [search, setSearch] = useState("");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  const filtered = useMemo(() => {
-    if (!alerts) return [];
-    const now = new Date("2026-09-30"); // date de référence démo
-
-    return alerts.filter((a) => {
-      const alertDate = new Date(a.date);
-
-      // Filtre période
-      let matchPeriod = true;
-      if (period === "jour") {
-        matchPeriod =
-          alertDate.getFullYear() === now.getFullYear() &&
-          alertDate.getMonth() === now.getMonth() &&
-          alertDate.getDate() === now.getDate();
-      } else if (period === "mois") {
-        matchPeriod =
-          alertDate.getFullYear() === now.getFullYear() &&
-          alertDate.getMonth() === now.getMonth();
-      } else if (period === "année") {
-        matchPeriod = alertDate.getFullYear() === now.getFullYear();
-      }
-
-      const matchSeverity = severity === "all" || a.severity === severity;
-      const matchStatus = status === "all" || a.status === status;
-      const matchSearch =
-        !search ||
-        a.clientName.toLowerCase().includes(search.toLowerCase()) ||
-        a.transactionId.toLowerCase().includes(search.toLowerCase()) ||
-        a.reason.toLowerCase().includes(search.toLowerCase());
-
-      return matchPeriod && matchSeverity && matchStatus && matchSearch;
-    });
-  }, [alerts, period, severity, status, search]);
-
-  const visible = filtered.slice(0, visibleCount);
-  const hasMore = visibleCount < filtered.length;
-
-  const resetVisible = () => setVisibleCount(PAGE_SIZE);
+  const {
+    data: alerts,
+    isLoading: alertsLoading,
+    error: alertsError,
+  } = useFraudAlerts({
+    page,
+    pageSize: PAGE_SIZE,
+    riskLevel: riskLevel === "all" ? undefined : riskLevel,
+    status: status === "all" ? undefined : status,
+  });
+  const { data: stats, isLoading: statsLoading } = useFraudStats();
+  const updateAlert = useUpdateFraudAlert();
 
   if (alertsLoading || statsLoading) {
     return <Loading message="Chargement des alertes fraude..." />;
   }
   if (alertsError || !alerts) {
-    return <ErrorMessage message="Impossible de charger les alertes." />;
+    return <ErrorMessage message={getErrorMessage(alertsError) || "Impossible de charger les alertes."} />;
   }
+
+  const pending = stats?.alerts_by_status.pending ?? 0;
 
   return (
     <div>
@@ -87,85 +77,76 @@ export function FraudAlertsPage() {
         <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardTitle>Total alertes</CardTitle>
-            <CardValue>{stats.totalAlerts}</CardValue>
+            <CardValue>{stats.total_alerts}</CardValue>
           </Card>
           <Card>
-            <CardTitle>Critiques</CardTitle>
-            <CardValue className="text-danger">{stats.criticalAlerts}</CardValue>
+            <CardTitle>Risque élevé</CardTitle>
+            <CardValue className="text-danger">
+              {stats.alerts_by_risk_level.high ?? 0}
+            </CardValue>
           </Card>
           <Card>
-            <CardTitle>Nouvelles</CardTitle>
-            <CardValue className="text-warning">{stats.newAlerts}</CardValue>
+            <CardTitle>En attente</CardTitle>
+            <CardValue className="text-warning">{pending}</CardValue>
           </Card>
           <Card>
-            <CardTitle>Résolues aujourd'hui</CardTitle>
-            <CardValue className="text-success">{stats.resolvedToday}</CardValue>
+            <CardTitle>Traitées</CardTitle>
+            <CardValue className="text-success">
+              {stats.total_alerts - pending}
+            </CardValue>
           </Card>
           <Card>
-            <CardTitle>Score risque moyen</CardTitle>
-            <CardValue>{stats.averageRiskScore}</CardValue>
+            <CardTitle>Taux de transactions suspectes</CardTitle>
+            <CardValue>{(stats.suspicious_rate * 100).toFixed(1)} %</CardValue>
           </Card>
         </div>
       )}
 
-      {/* Filtres */}
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Rechercher client, transaction, raison..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); resetVisible(); }}
-            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
-        </div>
-
-        {/* Période : jour / mois / année */}
-        <div className="flex rounded-lg border border-gray-300 p-0.5">
-          {(["jour", "mois", "année", "tout"] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => { setPeriod(p); resetVisible(); }}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-                period === p
-                  ? "bg-primary-600 text-white"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-
+      {/* Filtres (appliqués côté serveur) */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <select
-          value={severity}
-          onChange={(e) => { setSeverity(e.target.value as FraudSeverity | "all"); resetVisible(); }}
+          value={riskLevel}
+          onChange={(e) => {
+            setRiskLevel(e.target.value as RiskLevel | "all");
+            setPage(1);
+          }}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
         >
-          <option value="all">Toutes sévérités</option>
-          <option value="basse">Basse</option>
-          <option value="moyenne">Moyenne</option>
-          <option value="haute">Haute</option>
-          <option value="critique">Critique</option>
+          <option value="all">Tous niveaux de risque</option>
+          {RISK_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              Risque {RISK_LABELS[level].toLowerCase()}
+            </option>
+          ))}
         </select>
 
         <select
           value={status}
-          onChange={(e) => { setStatus(e.target.value as FraudStatus | "all"); resetVisible(); }}
+          onChange={(e) => {
+            setStatus(e.target.value as FraudStatus | "all");
+            setPage(1);
+          }}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
         >
           <option value="all">Tous statuts</option>
-          <option value="nouvelle">Nouvelle</option>
-          <option value="en_cours">En cours</option>
-          <option value="résolue">Résolue</option>
-          <option value="fausse_alerte">Fausse alerte</option>
+          {FRAUD_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABELS[s]}
+            </option>
+          ))}
         </select>
+
+        <p className="text-sm text-gray-500 sm:ml-auto">
+          {alerts.total} alerte{alerts.total > 1 ? "s" : ""} trouvée
+          {alerts.total > 1 ? "s" : ""}
+        </p>
       </div>
 
-      <p className="mb-3 text-sm text-gray-500">
-        {filtered.length} alerte{filtered.length > 1 ? "s" : ""} trouvée{filtered.length > 1 ? "s" : ""}
-      </p>
+      {updateAlert.isError && (
+        <div className="mb-4">
+          <ErrorMessage message={`Mise à jour impossible : ${getErrorMessage(updateAlert.error)}`} />
+        </div>
+      )}
 
       {/* Tableau */}
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -173,41 +154,77 @@ export function FraudAlertsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Client</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Montant</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Sévérité</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Raison</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Transaction</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Score</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Risque</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Explication</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Statut</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Traité par</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {visible.map((alert) => (
-                <tr key={alert.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="font-medium text-gray-900">{alert.clientName}</div>
-                    <div className="text-xs text-gray-500">{alert.transactionId}</div>
-                  </td>
+              {alerts.items.map((alert) => (
+                <tr key={alert.alert_id} className="transition-colors hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
-                    {formatAmount(alert.amount)}
+                    {alert.transaction_id}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    {alert.risk_score.toFixed(2)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
-                    <Badge variant="severity" value={alert.severity}>{alert.severity}</Badge>
+                    <Badge variant="risk" value={alert.risk_level}>
+                      {RISK_LABELS[alert.risk_level]}
+                    </Badge>
                   </td>
-                  <td className="max-w-xs px-6 py-4 text-sm text-gray-600">{alert.reason}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm capitalize text-gray-600">
-                    {alert.status.replace("_", " ")}
+                  <td className="max-w-xs px-6 py-4 text-sm text-gray-600">
+                    {alert.explanation ?? "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="status" value={alert.status}>
+                        {STATUS_LABELS[alert.status]}
+                      </Badge>
+                      <select
+                        aria-label={`Changer le statut de l'alerte ${alert.alert_id}`}
+                        value={alert.status}
+                        disabled={updateAlert.isPending}
+                        onChange={(e) =>
+                          updateAlert.mutate({
+                            alertId: alert.alert_id,
+                            payload: {
+                              status: e.target.value as FraudStatus,
+                              reviewed_by: REVIEWER,
+                            },
+                          })
+                        }
+                        className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-primary-500 focus:outline-none disabled:opacity-50"
+                      >
+                        {FRAUD_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                    {alert.reviewed_by ?? "—"}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {new Date(alert.date).toLocaleString("fr-FR", {
-                      day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                    {new Date(alert.created_at).toLocaleString("fr-FR", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </td>
                 </tr>
               ))}
-              {visible.length === 0 && (
+              {alerts.items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
                     Aucune alerte trouvée pour ces filtres
                   </td>
                 </tr>
@@ -216,16 +233,26 @@ export function FraudAlertsPage() {
           </table>
         </div>
 
-        {hasMore && (
-          <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 text-center">
-            <button
-              onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
-              className="text-sm font-medium text-primary-600 hover:text-primary-800"
-            >
-              Voir plus ({filtered.length - visibleCount} restant{filtered.length - visibleCount > 1 ? "s" : ""})
-            </button>
-          </div>
-        )}
+        {/* Pagination */}
+        <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="text-sm font-medium text-primary-600 hover:text-primary-800 disabled:cursor-not-allowed disabled:text-gray-400"
+          >
+            ← Précédent
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {alerts.page} / {Math.max(alerts.total_pages, 1)}
+          </span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= alerts.total_pages}
+            className="text-sm font-medium text-primary-600 hover:text-primary-800 disabled:cursor-not-allowed disabled:text-gray-400"
+          >
+            Suivant →
+          </button>
+        </div>
       </div>
     </div>
   );

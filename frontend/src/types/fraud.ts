@@ -1,33 +1,56 @@
 /**
- * Types liés à la détection de fraude
+ * Types alignés sur l'API FastAPI /fraud/*
  */
 
-export type FraudSeverity = "basse" | "moyenne" | "haute" | "critique";
-export type FraudStatus = "nouvelle" | "en_cours" | "résolue" | "fausse_alerte";
+export type RiskLevel =
+  | "low"
+  | "medium"
+  | "high";
+
+export type FraudStatus =
+  | "pending"
+  | "reviewed"
+  | "confirmed"
+  | "dismissed";
 
 export interface FraudAlert {
-  id: string;
-  clientId: number;
-  clientName: string;
-  transactionId: string;
-  amount: number;
-  date: string;
-  severity: FraudSeverity;
-  reason: string;
+  alert_id: number;
+  transaction_id: string;
+  risk_score: number;
+  risk_level: RiskLevel;
   status: FraudStatus;
+  explanation: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+}
+
+export interface FraudAlertListResponse {
+  items: FraudAlert[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
 }
 
 export interface FraudStats {
-  totalAlerts: number;
-  criticalAlerts: number;
-  resolvedToday: number;
-  averageRiskScore: number;
-  newAlerts: number;
+  total_transactions: number;
+  total_alerts: number;
+  suspicious_rate: number;
+  suspicious_amount: number;
+  alerts_by_status: Record<string, number>;
+  alerts_by_risk_level: Record<string, number>;
+  alerts_evolution: FraudEvolutionPoint[];
 }
 
-export interface FraudFilters {
-  period: "jour" | "mois" | "année" | "tout";
-  severity?: FraudSeverity | "all";
-  status?: FraudStatus | "all";
-  search?: string;
+export interface FraudEvolutionPoint {
+  date: string;
+  alert_count: number;
+  suspicious_amount: number;
+}
+
+export interface FraudAlertUpdate {
+  status: FraudStatus;
+  reviewed_by: string;
+  explanation?: string;
 }
