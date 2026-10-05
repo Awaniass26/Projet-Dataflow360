@@ -1,6 +1,8 @@
 """Routes de détection de fraude."""
 
 from fastapi import APIRouter, Depends, Query
+from math import ceil
+
 
 from api.core.exceptions import DatabaseNotConfiguredError, ResourceNotFoundError
 from api.dependencies import (
@@ -9,9 +11,11 @@ from api.dependencies import (
     get_optional_fraud_alert_repository,
 )
 from api.repositories.fraud_repository import FraudAlertRepository
-from api.schemas.common import ERROR_RESPONSES, RiskLevel
+from api.schemas.common import ERROR_RESPONSES, RiskLevel, FraudAlertStatus
 from api.schemas.fraud import (
+    FraudAlertListResponse,
     FraudAlertResponse,
+    FraudAlertUpdate,
     FraudPredictionResponse,
     FraudStatsResponse,
     TransactionInput,
@@ -62,17 +66,37 @@ def predict_fraud(
 
 @router.get(
     "/alerts",
-    response_model=list[FraudAlertResponse],
+    response_model=FraudAlertListResponse,
     responses=ERROR_RESPONSES,
-    summary="Liste les alertes de fraude enregistrées",
+    summary="Liste paginée des alertes de fraude",
 )
 def list_fraud_alerts(
-    limit: int = Query(default=50, ge=1, le=100),
-    repository: FraudAlertRepository = Depends(get_fraud_alert_repository),
-) -> list[FraudAlertResponse]:
-    """LIMITE ACTUELLE : si `DATABASE_URL` n'est pas configuré, cette route
-    renvoie une erreur 503 explicite plutôt qu'une liste vide ou simulée."""
-    return repository.list_alerts(limit=limit)
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+    risk_level: RiskLevel | None = Query(default=None),
+    status: FraudAlertStatus | None = Query(default=None),
+    repository: FraudAlertRepository = Depends(
+        get_fraud_alert_repository
+    ),
+) -> FraudAlertListResponse:
+    """Liste les alertes avec pagination et filtre par niveau de risque."""
+
+    alerts, total = repository.list_alerts(
+        page=page,
+        page_size=page_size,
+        risk_level=risk_level,
+        status=status,
+    )
+
+    total_pages = ceil(total / page_size) if total else 0
+
+    return FraudAlertListResponse(
+        items=alerts,
+        page=page,
+        page_size=page_size,
+        total=total,
+        total_pages=total_pages,
+    )
 
 
 @router.get(
@@ -90,6 +114,33 @@ def get_fraud_alert(
         raise ResourceNotFoundError(f"Aucune alerte trouvée pour '{alert_id}'.")
     return alert
 
+
+@router.patch(
+    "/alerts/{alert_id}",
+    response_model=FraudAlertResponse,
+    responses=ERROR_RESPONSES,
+    summary="Traite une alerte de fraude",
+)
+def update_fraud_alert(
+    alert_id: int,
+    update: FraudAlertUpdate,
+    repository: FraudAlertRepository = Depends(get_fraud_alert_repository),
+) -> FraudAlertResponse:
+    """Met à jour le statut et le suivi d'une alerte de fraude."""
+
+    alert = repository.update_alert(
+        alert_id=alert_id,
+        status=update.status,
+        reviewed_by=update.reviewed_by,
+        explanation=update.explanation,
+    )
+
+    if alert is None:
+        raise ResourceNotFoundError(
+            f"Aucune alerte trouvée pour '{alert_id}'."
+        )
+
+    return alert
 
 @router.get(
     "/stats",

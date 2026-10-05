@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from api.dependencies import get_fraud_alert_repository
 from api.main import app
-from api.schemas.common import RiskLevel
+from api.schemas.common import RiskLevel, FraudAlertStatus
 from api.schemas.fraud import FraudAlertResponse, FraudStatsResponse
 
 
@@ -19,6 +19,7 @@ class FakeFraudAlertRepository:
             transaction_id="txn_0007",
             risk_score=0.91,
             risk_level=RiskLevel.HIGH,
+            status=FraudAlertStatus.PENDING,
             created_at=datetime(2026, 1, 15, tzinfo=timezone.utc),
         )
 
@@ -28,12 +29,19 @@ class FakeFraudAlertRepository:
             total_alerts=2,
             suspicious_rate=0.2,
             suspicious_amount=30000,
+            alerts_by_status={
+                "pending": 2,
+                "reviewed": 0,
+                "confirmed": 0,
+                "dismissed": 0,
+            },
             alerts_by_risk_level={"low": 0, "medium": 1, "high": 1},
             alerts_evolution=[
                 {
                     "date": date(2026, 1, 15),
                     "alert_count": 2,
                     "suspicious_amount": 30000,
+            
                 }
             ],
         )
