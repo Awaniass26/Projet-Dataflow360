@@ -41,8 +41,12 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
 
     # --- CORS : liste d'origines séparées par des virgules ---
-    # Port 8050 = port par défaut de Dash. À confirmer avec le membre Frontend.
-    cors_allowed_origins: str = "http://localhost:8050,http://127.0.0.1:8050"
+    cors_allowed_origins: str = (
+    "http://localhost:5173,"
+    "http://127.0.0.1:5173,"
+    "http://localhost:8050,"
+    "http://127.0.0.1:8050"
+)
 
     # --- Mode simulation (désactivé par défaut, interdit en production) ---
     simulation_enabled: bool = False
