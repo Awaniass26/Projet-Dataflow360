@@ -1,43 +1,31 @@
 /**
- * Service Clients
- * Appels FastAPI réels via l'instance Axios centrale
+ * Service Clients — appels vers l'API FastAPI
+ * ===========================================
+ * Ces fonctions remplacent les anciens mocks.
+ * Elles appellent les endpoints /api/clients et /api/scoring du backend.
  */
-
-import type { Client, ClientDetail, ScoringFormData } from "@/types/client";
 import api from "./api";
+import type { Client, ClientDetail, ScoringFormData } from "@/types/client";
 
-/**
- * Récupère la liste de tous les clients
- * GET /api/clients
- */
+/** Récupère la liste des clients (scores + activité) */
 export async function getClients(): Promise<Client[]> {
-  const { data } = await api.get<Client[]>("/api/clients");
+  const { data } = await api.get<Client[]>("clients");
   return data;
 }
 
-/**
- * Récupère le détail d'un client (score, historique, KPIs, transactions)
- * GET /api/clients/{id}
- */
+/** Fiche détaillée d'un client (id numérique = suffixe de CL000001) */
 export async function getClientById(id: number): Promise<ClientDetail> {
-  const { data } = await api.get<ClientDetail>(`/api/clients/${id}`);
+  const { data } = await api.get<ClientDetail>(`clients/${id}`);
   return data;
 }
 
-/**
- * Soumet le formulaire de scoring crédit
- * POST /api/scoring
- *
- * Body : ScoringFormData
- * Response : { success: boolean; score: number; clientId: number }
- */
+/** Envoie le formulaire de scoring crédit et récupère le score calculé */
 export async function submitScoringForm(
-  data: ScoringFormData
+  formData: ScoringFormData
 ): Promise<{ success: boolean; score: number; clientId: number }> {
-  const { data: result } = await api.post<{
-    success: boolean;
-    score: number;
-    clientId: number;
-  }>("/api/scoring", data);
-  return result;
+  const { data } = await api.post<{ success: boolean; score: number; clientId: number }>(
+    "scoring",
+    formData
+  );
+  return data;
 }
