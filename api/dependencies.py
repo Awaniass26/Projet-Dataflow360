@@ -7,11 +7,15 @@ tests (`app.dependency_overrides`), sans toucher aux routes.
 from collections.abc import Generator
 from functools import lru_cache
 
-from fastapi import Depends
+from fastapi import Depends,HTTPException, status
 from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordBearer
+
 
 from api.core.config import Settings
+from api.core.security import decode_access_token
 from api.db.session import get_db_session
+from api.db.models import User
 from api.repositories.credit_repository import CreditScoreRepository, PostgresCreditScoreRepository
 from api.repositories.fraud_repository import FraudAlertRepository, PostgresFraudAlertRepository
 from api.services.credit_service import CreditScoringService
@@ -20,6 +24,9 @@ from api.repositories.client_repository import (
     ClientRepository,
     PostgresClientRepository,
 )
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 @lru_cache(maxsize=1)
@@ -86,3 +93,50 @@ def get_client_repository(
     """Fournit le repository PostgreSQL des clients."""
 
     return PostgresClientRepository(session)
+
+
+def get_current_user_email(
+    token: str | None = Depends(oauth2_scheme),
+    settings: Settings = Depends(get_settings),
+) -> str:
+    """Renvoie l'email de l'utilisateur connecté, ou lève 401."""
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentification requise.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    email = decode_access_token(token, settings)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalide ou expiré.",
+        )
+    return email
+
+def get_current_user(
+    email: str = Depends(get_current_user_email),
+    session: Session = Depends(get_db),
+) -> User:
+    """Renvoie l'utilisateur connecté (objet User complet)."""
+    from api.repositories.user_repository import PostgresUserRepository
+    repo = PostgresUserRepository(session)
+    user = repo.get_by_email(email)
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Utilisateur introuvable ou inactif.",
+        )
+    return user
+
+
+def get_current_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Renvoie l'utilisateur connecté s'il est admin, sinon 403."""
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs.",
+        )
+    return user

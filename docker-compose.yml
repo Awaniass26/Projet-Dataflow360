@@ -277,6 +277,86 @@ services:
     command: ["pytest", "-q"]
 
 
+
+  # ==============================================================
+  # 10. Kafka + Zookeeper — détection de fraude temps réel
+  # ==============================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: dataflow360-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - dataflow360
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: dataflow360-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - dataflow360
+
+  transaction-producer:
+    <<: *api-image
+    container_name: dataflow360-transaction-producer
+    restart: unless-stopped
+    command: ["python", "-m", "api.kafka.producer"]
+    environment:
+      <<: *database-url
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC_TRANSACTIONS: transactions
+      KAFKA_ENABLED: "true"
+      SIMULATION_ENABLED: ${SIMULATION_ENABLED:-true}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - dataflow360
+
+  fraud-consumer:
+    <<: *api-image
+    container_name: dataflow360-fraud-consumer
+    restart: unless-stopped
+    command: ["python", "-m", "api.kafka.consumer"]
+    environment:
+      <<: *database-url
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_TOPIC_TRANSACTIONS: transactions
+      KAFKA_CONSUMER_GROUP: fraud-detection
+      KAFKA_ENABLED: "true"
+      SIMULATION_ENABLED: ${SIMULATION_ENABLED:-true}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - dataflow360
+
+
 volumes:
   postgres_data:
     name: dataflow360-postgres-data

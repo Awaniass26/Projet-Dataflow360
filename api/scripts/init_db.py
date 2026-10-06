@@ -4,6 +4,7 @@ from sqlalchemy import Engine, create_engine, func, select
 
 from api.core.config import Settings
 from api.db.migrations import migrate_api_schema
+from api.scripts.seed_users import main as seed_users_main  
 from api.db.models import (
     Client,
     CreditApplication,
@@ -39,12 +40,13 @@ def main() -> None:
         migrate_api_schema(engine)
         if _has_existing_data(engine):
             print("Données existantes détectées : génération initiale ignorée.")
-            return
+        else:
+            from api.scripts.generate import generate_dataset, insert_data
+            print("Base vide : chargement du jeu de démonstration...")
+            insert_data(*generate_dataset())
 
-        from api.scripts.generate import generate_dataset, insert_data
-
-        print("Base vide : chargement du jeu de données de démonstration...")
-        insert_data(*generate_dataset())
+        # Dans tous les cas : s'assurer qu'un admin existe
+        seed_users_main()
     finally:
         engine.dispose()
 

@@ -11,8 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.core.config import Settings
 from api.core.error_handlers import register_exception_handlers
-from api.dependencies import get_settings
-from api.routers import credit, fraud, client
+from api.dependencies import get_settings , get_current_user_email
+from api.routers import credit, fraud, client , auth
 from api.schemas.health import ConfigurationStatus, HealthResponse, WelcomeResponse
 
 # Utilisée uniquement pour les réglages fixés au démarrage du processus
@@ -36,9 +36,10 @@ app.add_middleware(
 
 register_exception_handlers(app)
 
-app.include_router(fraud.router)
-app.include_router(credit.router)
-app.include_router(client.router)
+app.include_router(auth.router)  # ← public
+app.include_router(fraud.router, dependencies=[Depends(get_current_user_email)])
+app.include_router(credit.router, dependencies=[Depends(get_current_user_email)])
+app.include_router(client.router, dependencies=[Depends(get_current_user_email)])
 
 
 @app.get("/", response_model=WelcomeResponse, tags=["Général"], summary="Route de bienvenue")

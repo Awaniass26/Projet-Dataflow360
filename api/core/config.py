@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     )
     environment: Literal["development", "test", "production"] = "development"
 
+    # --- Authentification JWT ---
+    jwt_secret: str = "change-me-in-production-please-use-a-real-secret"
+    jwt_algorithm: str = "HS256"
+    jwt_expires_minutes: int = 60 * 24  # 24h
+
     # --- CORS : liste d'origines séparées par des virgules ---
     cors_allowed_origins: str = (
     "http://localhost:5173,"
@@ -53,6 +58,12 @@ class Settings(BaseSettings):
 
     # --- PostgreSQL ---
     database_url: str | None = None
+
+    # --- Kafka ---
+    kafka_bootstrap_servers: str = "kafka:29092"
+    kafka_topic_transactions: str = "transactions"
+    kafka_consumer_group: str = "fraud-detection"
+    kafka_enabled: bool = False
 
     # --- Modèles ML : à renseigner dans .env quand le membre ML les livre ---
     fraud_model_path: str | None = None

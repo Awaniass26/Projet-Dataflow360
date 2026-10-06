@@ -11,7 +11,33 @@ def migrate_api_schema(engine: Engine) -> None:
     Base.metadata.create_all(bind=engine)
 
     with engine.begin() as connection:
-        # Évolution de api_fraud_alerts
+        # ------------------------------------------------------------------
+        # api_clients : ajout du nom (nullable d'abord, backfill ensuite)
+        # ------------------------------------------------------------------
+        connection.execute(
+            text(
+                """
+                ALTER TABLE api_clients
+                ADD COLUMN IF NOT EXISTS name VARCHAR(120)
+                """
+            )
+        )
+
+        # Backfill : tout client dont le nom est NULL reçoit "Client <id>"
+        # (les vrais noms seront fournis par le seed suivant)
+        connection.execute(
+            text(
+                """
+                UPDATE api_clients
+                SET name = 'Client ' || client_id
+                WHERE name IS NULL
+                """
+            )
+        )
+
+        # ------------------------------------------------------------------
+        # api_fraud_alerts : statut + audit
+        # ------------------------------------------------------------------
         connection.execute(
             text(
                 """
@@ -49,7 +75,9 @@ def migrate_api_schema(engine: Engine) -> None:
             )
         )
 
-        # Évolution de api_credit_scores
+        # ------------------------------------------------------------------
+        # api_credit_scores : version du modèle + index non-unique
+        # ------------------------------------------------------------------
         connection.execute(
             text(
                 """
@@ -60,7 +88,7 @@ def migrate_api_schema(engine: Engine) -> None:
             )
         )
 
-        # Une application peut maintenant avoir plusieurs scores.
+        # Une application peut maintenant avoir plusieurs scores dans le temps.
         connection.execute(
             text(
                 """
@@ -74,6 +102,28 @@ def migrate_api_schema(engine: Engine) -> None:
                 """
                 CREATE INDEX IF NOT EXISTS ix_credit_scores_application_id
                 ON api_credit_scores(application_id)
+                """
+            )
+        )
+
+
+
+                # Contrainte sur le rôle utilisateur
+        connection.execute(
+            text(
+                """
+                ALTER TABLE api_users
+                DROP CONSTRAINT IF EXISTS api_users_role_check
+                """
+            )
+        )
+
+        connection.execute(
+            text(
+                """
+                ALTER TABLE api_users
+                ADD CONSTRAINT api_users_role_check
+                CHECK (role IN ('admin', 'analyst', 'viewer'))
                 """
             )
         )

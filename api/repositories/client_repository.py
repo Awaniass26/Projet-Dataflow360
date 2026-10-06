@@ -16,7 +16,12 @@ from api.schemas.client import (
 class ClientRepository(Protocol):
     """Contrat d'accès aux clients."""
 
-    def list_clients(self, limit: int = 50) -> list[ClientResponse]:
+    def list_clients(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[list[ClientResponse], int]:
+        """Retourne une page de clients et le nombre total."""
         ...
 
     def get_client(
@@ -34,18 +39,29 @@ class PostgresClientRepository:
 
     def list_clients(
         self,
-        limit: int = 50,
-    ) -> list[ClientResponse]:
-        clients = (
+        page: int = 1,
+        page_size: int = 50,
+    ) -> tuple[list[ClientResponse], int]:
+        """Retourne une page de clients et le nombre total."""
+
+        query = (
             self._session.query(Client)
             .order_by(Client.client_id)
-            .limit(limit)
+        )
+
+        total = query.count()
+
+        clients = (
+            query
+            .offset((page - 1) * page_size)
+            .limit(page_size)
             .all()
         )
 
-        return [
+        items = [
             ClientResponse(
                 client_id=client.client_id,
+                name=client.name,
                 age=client.age,
                 sexe=client.sexe,
                 region=client.region,
@@ -53,6 +69,8 @@ class PostgresClientRepository:
             )
             for client in clients
         ]
+
+        return items, total
 
     def get_client(
         self,
@@ -87,6 +105,7 @@ class PostgresClientRepository:
 
         return ClientDetailResponse(
             client_id=client.client_id,
+            name=client.name,
             age=client.age,
             sexe=client.sexe,
             region=client.region,
