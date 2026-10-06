@@ -88,6 +88,26 @@ CHANNELS = [
 # Génération des clients
 # ---------------------------------------------------------------------------
 
+# Prénoms et noms sénégalais réalistes (synthétiques, mais crédibles)
+FIRST_NAMES = [
+    "Awa", "Moussa", "Fatou", "Ibrahima", "Mariama", "Ousmane",
+    "Aissatou", "Cheikh", "Khady", "Modou", "Aminata", "Abdoulaye",
+    "Sokhna", "Mamadou", "Ndeye", "Babacar", "Coumba", "Serigne",
+    "Yacine", "Pape", "Bineta", "Lamine", "Astou", "Alioune",
+    "Adama", "Cira", "Doudou", "El Hadji", "Fatoumata", "Gora",
+    "Hawa", "Ibrahima", "Jeanne", "Khadija", "Léa", "Malick",
+    "Mame Diarra", "Ndeye Fatou", "Ousseynou", "Rokhaya",
+]
+
+LAST_NAMES = [
+    "Diop", "Traoré", "Ndiaye", "Sarr", "Ba", "Fall", "Sy",
+    "Gueye", "Mbaye", "Diagne", "Diallo", "Sow", "Faye",
+    "Cissé", "Camara", "Touré", "Kane", "Seck", "Ndour",
+    "Thiam", "Dieng", "Diaw", "Bèye", "Samb", "Diouf",
+    "Bâ", "Dia", "Konaté", "Sané", "Coumbary",
+]
+
+
 def generate_clients(rng: random.Random | None = None) -> list[Client]:
     """Génère les clients synthétiques."""
 
@@ -95,8 +115,12 @@ def generate_clients(rng: random.Random | None = None) -> list[Client]:
     clients = []
 
     for index in range(NUMBER_OF_CLIENTS):
+        first_name = rng.choice(FIRST_NAMES)
+        last_name = rng.choice(LAST_NAMES)
+
         client = Client(
             client_id=f"CLI-{index + 1:06d}",
+            name=f"{first_name} {last_name}",
             age=rng.randint(18, 70),
             sexe=rng.choice(SEXES),
             region=rng.choice(REGIONS),

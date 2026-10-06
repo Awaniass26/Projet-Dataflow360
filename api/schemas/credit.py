@@ -17,7 +17,7 @@ class CreditApplicationInput(BaseModel):
 
     application_id: str = Field(..., min_length=1, examples=["credit_app_0001"])
     account_id: str = Field(..., min_length=1)
-    requested_amount: float = Field(..., gt=0, description="Montant demandé (FCFA).")
+    requested_amount: float = Field(..., gt=0, description="Montant demandé.")
     requested_duration_months: int = Field(..., gt=0)
 
     estimated_monthly_income: float | None = Field(default=None, ge=0)

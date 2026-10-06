@@ -72,7 +72,7 @@ def predict_fraud(
 )
 def list_fraud_alerts(
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=100),
+    page_size: int = Query(default=50, ge=1, le=1000),
     risk_level: RiskLevel | None = Query(default=None),
     status: FraudAlertStatus | None = Query(default=None),
     repository: FraudAlertRepository = Depends(

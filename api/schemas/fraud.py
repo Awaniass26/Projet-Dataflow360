@@ -35,7 +35,7 @@ class TransactionInput(BaseModel):
     """
 
     transaction_id: str = Field(..., min_length=1, examples=["txn_0001"])
-    amount: float = Field(..., gt=0, description="Montant de la transaction (FCFA).")
+    amount: float = Field(..., gt=0, description="Montant de la transaction.")
     transaction_type: TransactionType
     channel: TransactionChannel
     occurred_at: datetime = Field(..., description="Horodatage de la transaction.")

@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, Query
 from api.core.exceptions import ResourceNotFoundError
 from api.dependencies import get_client_repository
 from api.repositories.client_repository import ClientRepository
-from api.schemas.client import ClientDetailResponse, ClientResponse
+from api.schemas.client import ClientDetailResponse, ClientResponse,ClientListResponse
 from api.schemas.common import ERROR_RESPONSES
+from math import ceil
 
 
 router = APIRouter(
@@ -17,21 +18,38 @@ router = APIRouter(
 
 @router.get(
     "",
-    response_model=list[ClientResponse],
+    response_model=ClientListResponse,
     responses=ERROR_RESPONSES,
-    summary="Liste les clients",
+    summary="Liste paginée des clients",
 )
 def list_clients(
-    limit: int = Query(
+    page: int = Query(
+        default=1,
+        ge=1,
+    ),
+    page_size: int = Query(
         default=50,
         ge=1,
         le=100,
     ),
     repository: ClientRepository = Depends(get_client_repository),
-) -> list[ClientResponse]:
-    """Retourne une liste paginée simplement par limite."""
+) -> ClientListResponse:
+    """Retourne une page de clients."""
 
-    return repository.list_clients(limit=limit)
+    clients, total = repository.list_clients(
+        page=page,
+        page_size=page_size,
+    )
+
+    total_pages = ceil(total / page_size) if total else 0
+
+    return ClientListResponse(
+        items=clients,
+        page=page,
+        page_size=page_size,
+        total=total,
+        total_pages=total_pages,
+    )
 
 
 @router.get(

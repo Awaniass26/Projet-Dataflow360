@@ -9,10 +9,23 @@ class ClientResponse(BaseModel):
     """Informations principales d'un client."""
 
     client_id: str
+    name: str
     age: int
     sexe: str
     region: str
     account_type: str
+
+
+
+class ClientListResponse(BaseModel):
+    """Réponse paginée de la liste des clients."""
+
+    items: list[ClientResponse]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+
 
 
 class ClientTransactionResponse(BaseModel):
@@ -39,6 +52,7 @@ class ClientDetailResponse(BaseModel):
     """Détail d'un client avec son historique."""
 
     client_id: str
+    name: str
     age: int
     sexe: str
     region: str
