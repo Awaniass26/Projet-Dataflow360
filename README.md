@@ -3,7 +3,7 @@
 **DataFlow360 prépare et explore des données de mobile money afin d'étudier deux risques financiers : la fraude sur les transactions et le défaut de remboursement des crédits.** Le projet génère des historiques synthétiques, en extrait des indicateurs de comportement et les exporte en CSV pour l'analyse et la préparation de futurs modèles.
 
 
-Toutes les données sont fictives. Le projet ne prend pas de décisions financières : il n'entraîne ni ne sert encore de modèle de prédiction, et son dashboard utilise des exemples codés en dur.
+Toutes les données de démonstration sont synthétiques. Le backend expose des routes de prédiction, mais répond en mode simulation tant qu'aucun modèle réel n'est configuré. Le frontend React utilise encore des données mockées. Aucun résultat ne constitue une décision financière.
 
 # Projet-Dataflow360
 
@@ -12,19 +12,32 @@ Toutes les données sont fictives. Le projet ne prend pas de décisions financi�
 
 ## Voir le projet rapidement
 
-L'API se lance avec Docker depuis la racine du dépôt. Docker Compose construit l'image et publie le port `8000`.
+Depuis la racine du dépôt, démarrer l'ensemble des services :
 
 ```bash
-docker compose up --build api
+docker compose up --build -d
 ```
 
-Une fois le conteneur démarré :
+Compose démarre l'API FastAPI, PostgreSQL, MongoDB et Redis. Il crée le schéma PostgreSQL avant le démarrage de l'API ; il ne génère pas automatiquement de lignes.
 
 - API : <http://localhost:8000>
 - Vérification de santé : <http://localhost:8000/health>
 - Documentation interactive : <http://localhost:8000/docs>
+- PostgreSQL depuis l'hôte : `localhost:5433` (port interne Docker : `5432`)
 
-Arrêter le service avec `Ctrl+C`, puis, si nécessaire, supprimer les conteneurs avec `docker compose down`.
+Arrêter les services sans supprimer les volumes de données :
+
+```bash
+docker compose down
+```
+
+`docker compose down -v` supprime également les volumes et donc les données des bases.
+
+Pour exécuter les tests API dans Docker :
+
+```bash
+docker compose --profile test run --rm api-tests
+```
 
 ## Ce que le projet analyse
 
@@ -46,24 +59,19 @@ Générateurs Python
 
 Les scripts de génération créent notamment 6 000 clients et 500 000 transactions synthétiques. La génération des transactions peut prendre une à deux minutes et remplace les CSV correspondants dans `data/synthetic/`.
 
-## Démarrer le dashboard
+## Démarrer le frontend
 
-Le dashboard est indépendant du conteneur API et utilise des données codées en dur pour la démonstration. Il ne lit pas encore les résultats de l'API.
+Le frontend est une application React/TypeScript servie en développement par Vite. Ses vues utilisent encore des données mockées et ne consomment pas encore les réponses de l'API.
 
-Prérequis : Python 3.10 ou supérieur. Installer ses dépendances dans l'environnement Python de votre choix :
-
-```bash
-python3 -m pip install dash plotly pandas
-```
-
-Depuis la racine du dépôt :
+Prérequis : Node.js 20 ou supérieur et npm.
 
 ```bash
-cd dashboard
-python3 app.py
+cd frontend
+npm install
+npm run dev
 ```
 
-Ouvrir ensuite <http://127.0.0.1:8050>. Arrêter avec `Ctrl+C`.
+Ouvrir <http://localhost:5173>. L'URL de l'API peut être configurée dans `frontend/.env` avec `VITE_API_BASE_URL`.
 
 ## Générer et préparer les données
 
@@ -91,41 +99,58 @@ Résultats attendus :
 
 Pour revenir à la racine après ces commandes : `cd ../..`.
 
+## Générer les données PostgreSQL de démonstration
+
+Les tables API sont créées au démarrage de Compose, mais restent vides jusqu'à l'exécution explicite du générateur :
+
+```bash
+docker compose exec api python -m api.scripts.generate
+```
+
+Le dataset PostgreSQL est déterministe : chaque exécution produit les mêmes identifiants, valeurs et dates. Attention : le générateur vide les tables `clients`, `transactions`, `fraud_alerts`, `credit_applications` et `credit_scores` avant de les remplir. Ne l'exécuter que si vous souhaitez remplacer leur contenu.
+
 ## API
 
-L'API est définie dans `api/main.py` et son image Docker dans `api/Dockerfile`. Les dépendances de l'API sont dans `requirements.txt` à la racine.
+L'API est définie dans `api/main.py`, ses routes métier sont dans `api/routers/` et son image Docker dans `api/Dockerfile`. Les dépendances sont dans `requirements.txt` à la racine. Sans modèle configuré, les routes de prédiction renvoient une réponse de simulation si `SIMULATION_ENABLED=true`.
 
 | Méthode | Route | Fonction actuelle |
 | --- | --- | --- |
 | `GET` | `/` | Message de bienvenue |
 | `GET` | `/health` | Indique que l'API répond |
+| `GET` | `/clients` | Liste les clients stockés dans PostgreSQL |
+| `GET` | `/clients/{client_id}` | Détail d'un client et de son historique |
+| `POST` | `/fraud/predict` | Évalue une transaction (modèle configuré ou simulation) |
+| `GET` | `/fraud/alerts`, `/fraud/stats` | Consulte les alertes et indicateurs fraude |
+| `POST` | `/credit/score` | Évalue une demande de crédit (modèle configuré ou simulation) |
+| `GET` | `/credit/applications`, `/credit/stats` | Consulte les demandes et indicateurs crédit |
 
-Les fichiers de routes fraude et crédit sont présents, mais ne contiennent pas encore de logique métier. L'API ne calcule donc pas encore de score de fraude ou de crédit.
+Les routes de consultation nécessitent PostgreSQL. Les routes de prédiction peuvent répondre en simulation ; les résultats simulés ne sont pas des décisions financières.
 
 ## Structure du dépôt
 
 ```text
-api/                  API FastAPI et Dockerfile
-dashboard/            Démonstration web Dash/Plotly
+api/                  API FastAPI, scripts de génération et Dockerfile
+frontend/             Application React/TypeScript avec Vite
 data/
   synthetic/          CSV synthétiques
   processed/          CSV préparés pour l'analyse
-  pipelines/models/   Emplacements de prototypes de modèles
-notebooks/            Analyses exploratoires
+eda/notebooks/        Analyses exploratoires
+models/fraude/        Scripts et artefacts liés aux modèles
 src/data/             Génération des données synthétiques
 src/features/         Construction des variables et datasets
-streaming/            Fichiers réservés au streaming, encore vides
-docker-compose.yml    Démarrage du service API
-requirements.txt      Dépendances de l'API
+streaming/            Producteur et consommateur de données
+tests/                Tests de l'API et des repositories
+docker-compose.yml    Services API et bases de données
+requirements.txt      Dépendances Python
 ```
 
 ## État actuel et limites
 
 - **Données :** données synthétiques destinées au prototypage, jamais des informations réelles de clients.
-- **Dashboard :** démonstration visuelle à données fictives, non connectée à l'API.
-- **API :** seule la route d'accueil et la route `/health` sont actives.
-- **Machine learning :** les scripts de modèles sont des exemples incomplets ou commentés ; aucune prédiction n'est servie.
-- **Streaming :** les fichiers présents ne mettent pas encore en place de flux Kafka opérationnel.
-- **Configuration :** aucun fichier `.env` n'est nécessaire pour lancer l'API actuelle.
+- **Frontend :** interface de démonstration dont les vues utilisent encore des mocks.
+- **API :** routes clients, fraude et crédit disponibles ; les prédictions restent simulées tant que les modèles ne sont pas configurés.
+- **Données PostgreSQL :** schéma initialisé par Compose ; le dataset de démonstration doit être généré explicitement.
+- **Machine learning :** la disponibilité d'une route de prédiction ne signifie pas qu'un modèle réel est chargé.
+- **Configuration :** les valeurs par défaut de Compose suffisent pour démarrer ; `.env` est facultatif et ne doit pas contenir de secrets committés.
 
 Le projet est donc une base de démonstration et de développement, pas encore un système de décision financière prêt pour la production.

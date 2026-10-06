@@ -1,7 +1,13 @@
-
 .venv/
 
-__pycache__/
+.env
+
+**pycache**/
+*.pyc
+
+data/synthetic/*.csv
+data/processed/*.csv
+
 notebooks/dataset_Scoring_credit.csv
 notebooks/dataset_credit_clean.csv
 notebooks/mobile_money_credit_scoring_5000.csv
