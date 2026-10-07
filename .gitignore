@@ -8,7 +8,5 @@
 data/synthetic/*.csv
 data/processed/*.csv
 
-notebooks/dataset_Scoring_credit.csv
-notebooks/dataset_credit_clean.csv
-notebooks/mobile_money_credit_scoring_5000.csv
-notebooks/dataflow360_mobile_money_credit(1).csv
+*.csv
+!*.csv.dvc
