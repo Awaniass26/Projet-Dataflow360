@@ -7,7 +7,7 @@ import { Shield } from "lucide-react";
 export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("admin@dataflow360.com");
-  const [password, setPassword] = useState("admin1234");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -106,10 +106,6 @@ export function LoginPage() {
               {loading ? "Connexion…" : "Se connecter"}
             </button>
           </div>
-
-          <p className="mt-6 text-center text-xs text-slate-400">
-            Compte démo : admin@dataflow360.com / admin1234
-          </p>
         </form>
       </div>
     </div>

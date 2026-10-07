@@ -72,7 +72,6 @@ export function UsersPage() {
     <div>
       <PageHeader
         title="Utilisateurs"
-        subtitle="Création de comptes — réservé aux administrateurs"
       />
 
       <Card className="mx-auto max-w-lg">
