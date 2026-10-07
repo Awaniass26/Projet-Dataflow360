@@ -1,7 +1,6 @@
 /**
  * Services Clients / Crédit
- *
- * Tous les endpoints correspondent au contrat FastAPI.
+ * GET /clients renvoie une réponse paginée : { items, page, page_size, total, total_pages }
  */
 
 import api from "./api";
@@ -9,24 +8,26 @@ import api from "./api";
 import type {
   Client,
   ClientDetail,
+  ClientListResponse,
   CreditApplicationInput,
   CreditScoreResponse,
 } from "@/types/client";
 
 /**
- * GET /clients
+ * GET /clients — retourne uniquement la liste des clients
  */
-export async function getClients(
-  limit = 50
-): Promise<Client[]> {
-  const { data } = await api.get<Client[]>(
-    "/clients",
-    {
-      params: { limit },
-    }
-  );
+export async function getClients(limit = 50): Promise<Client[]> {
+  const pageSize = Math.min(Math.max(limit, 1), 100);
 
-  return data;
+  const { data } = await api.get<ClientListResponse>("/clients", {
+    params: {
+      page: 1,
+      page_size: pageSize,
+    },
+  });
+
+  // L'API renvoie un objet paginé, pas un tableau brut
+  return data.items ?? [];
 }
 
 /**
@@ -38,7 +39,6 @@ export async function getClientById(
   const { data } = await api.get<ClientDetail>(
     `/clients/${encodeURIComponent(clientId)}`
   );
-
   return data;
 }
 
@@ -52,7 +52,6 @@ export async function submitCreditScore(
     "/credit/score",
     application
   );
-
   return data;
 }
 
@@ -65,6 +64,5 @@ export async function getCreditScore(
   const { data } = await api.get<CreditScoreResponse>(
     `/credit/score/${encodeURIComponent(applicationId)}`
   );
-
   return data;
 }

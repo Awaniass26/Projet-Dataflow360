@@ -8,5 +8,13 @@
 data/synthetic/*.csv
 data/processed/*.csv
 
+# Datasets locaux
+
 *.csv
 !*.csv.dvc
+
+# MLflow
+
+models/fraude/mlruns/
+models/fraude/mlflow.db
+models/mlflow.db

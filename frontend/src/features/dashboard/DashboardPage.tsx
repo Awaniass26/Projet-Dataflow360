@@ -28,36 +28,42 @@ export function DashboardPage() {
       />
 
       {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        <Card>
-          <CardTitle>Score moyen</CardTitle>
-          <CardValue>{kpi.averageCreditScore.toFixed(3)}</CardValue>
-        </Card>
-        <Card>
-          <CardTitle>Total clients</CardTitle>
-          <CardValue>{kpi.totalClients.toLocaleString("fr-FR")}</CardValue>
-        </Card>
-        <Card>
-          <CardTitle>Clients à risque</CardTitle>
-          <CardValue className="text-danger">{kpi.highRiskClients}</CardValue>
-        </Card>
-        <Card>
-          <CardTitle>Alertes/jour</CardTitle>
-          <CardValue className="text-warning">{kpi.fraudAlertsToday}</CardValue>
-        </Card>
-        <Card>
-          <CardTitle>Transactions</CardTitle>
-          <CardValue>{kpi.totalTransactionsToday.toLocaleString("fr-FR")}</CardValue>
-        </Card>
-        <Card>
-          <CardTitle>Volume/jour</CardTitle>
-          <CardValue className="text-lg">{formatAmount(kpi.totalVolumeToday)}</CardValue>
-        </Card>
-        <Card>
-          <CardTitle>Inscriptions/Semaine</CardTitle>
-          <CardValue className="text-primary-600">{kpi.newRegistrationsThisWeek}</CardValue>
-        </Card>
-      </div>
+    <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <Card>
+        <CardTitle>Score moyen</CardTitle>
+        <CardValue>{(kpi.averageCreditScore ?? 0).toFixed(3)}</CardValue>
+      </Card>
+      <Card>
+        <CardTitle>Total clients</CardTitle>
+        <CardValue>{(kpi.totalClients ?? 0).toLocaleString("fr-FR")}</CardValue>
+      </Card>
+      <Card>
+        <CardTitle>Clients à risque</CardTitle>
+        <CardValue className="text-danger">{kpi.highRiskClients ?? 0}</CardValue>
+      </Card>
+      <Card>
+        <CardTitle>Alertes/jour</CardTitle>
+        <CardValue className="text-warning">{kpi.fraudAlertsToday ?? 0}</CardValue>
+      </Card>
+      <Card>
+        <CardTitle>Transactions</CardTitle>
+        <CardValue>
+          {(kpi.totalTransactionsToday ?? 0).toLocaleString("fr-FR")}
+        </CardValue>
+      </Card>
+      <Card>
+        <CardTitle>Volume/jour</CardTitle>
+        <CardValue className="text-lg">
+          {formatAmount(kpi.totalVolumeToday ?? 0)}
+        </CardValue>
+      </Card>
+      <Card>
+        <CardTitle>Inscriptions/Semaine</CardTitle>
+        <CardValue className="text-primary-600">
+          {kpi.newRegistrationsThisWeek ?? 0}
+        </CardValue>
+      </Card>
+    </div>
 
       {/* Graphiques */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -80,14 +86,14 @@ export function DashboardPage() {
 
         <Card>
           <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Évolution score, fraudes & inscriptions
+            Évolution score, fraudes & inscriptions en fonction du temps
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Legend />

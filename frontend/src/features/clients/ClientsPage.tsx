@@ -22,12 +22,6 @@ export function ClientsPage() {
   const [visibleCount, setVisibleCount] =
     useState(PAGE_SIZE);
 
-  // Debug temporaire : permet de vérifier
-  // ce que React reçoit réellement de l'API.
-  console.log("CLIENTS =", clients);
-  console.log("LOADING =", isLoading);
-  console.log("ERROR =", error);
-
   const filtered = useMemo(() => {
     if (!clients) {
       return [];
