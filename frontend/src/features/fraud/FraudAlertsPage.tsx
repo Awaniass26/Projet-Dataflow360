@@ -97,7 +97,7 @@ export function FraudAlertsPage() {
           </Card>
           <Card>
             <CardTitle>Taux de transactions suspectes</CardTitle>
-            <CardValue>{(stats.suspicious_rate * 100).toFixed(1)} %</CardValue>
+            <CardValue>{(stats.suspicious_rate * 100).toFixed(3)} %</CardValue>
           </Card>
         </div>
       )}

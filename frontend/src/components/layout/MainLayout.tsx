@@ -13,7 +13,7 @@ export function MainLayout() {
       {/* Barre d'en-tête fixe Dataflow */}
       <header className="fixed top-0 left-64 right-0 z-20 flex h-16 items-center border-b border-gray-200 bg-white px-6">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">Dataflow</span>
+          <span className="text-sm font-semibold text-gray-900">SenTerangaSafe</span>
           <span className="text-gray-300">|</span>
           <span className="text-sm text-gray-500">Scoring Crédit & Détection de Fraude</span>
         </div>
