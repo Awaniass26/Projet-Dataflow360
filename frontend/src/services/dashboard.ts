@@ -1,9 +1,4 @@
-/**
- * Dashboard : agrège /clients, /credit/stats, /fraud/stats
- */
-
 import api from "./api";
-
 import type {
   DashboardKPI,
   ScoreDistribution,
@@ -33,17 +28,15 @@ interface FraudStatsApi {
 }
 
 async function getDashboardData() {
-  const [clientsResponse, creditResponse, fraudResponse] =
-    await Promise.all([
-      api.get<ClientListResponse>("/clients", {
-        params: { page: 1, page_size: 100 },
-      }),
-      api.get<CreditStatsApi>("/credit/stats"),
-      api.get<FraudStatsApi>("/fraud/stats"),
-    ]);
+  const [clientsResponse, creditResponse, fraudResponse] = await Promise.all([
+    api.get<ClientListResponse>("/clients", {
+      params: { page: 1, page_size: 100 },
+    }),
+    api.get<CreditStatsApi>("/credit/stats"),
+    api.get<FraudStatsApi>("/fraud/stats"),
+  ]);
 
   const clientsPayload = clientsResponse.data;
-  // Compat : si un jour l'API renvoie un tableau brut
   const clients = Array.isArray(clientsPayload)
     ? clientsPayload
     : (clientsPayload.items ?? []);
@@ -61,7 +54,6 @@ async function getDashboardData() {
 
 export async function getDashboardKPI(): Promise<DashboardKPI> {
   const { clientsTotal, credit, fraud } = await getDashboardData();
-
   const today = new Date().toISOString().slice(0, 10);
 
   const fraudAlertsToday = (fraud.alerts_evolution ?? [])
@@ -82,7 +74,6 @@ export async function getDashboardKPI(): Promise<DashboardKPI> {
 export async function getScoreDistribution(): Promise<ScoreDistribution[]> {
   const { credit } = await getDashboardData();
   const dist = credit.risk_distribution ?? {};
-
   return [
     { range: "Faible", count: dist.low ?? 0 },
     { range: "Moyen", count: dist.medium ?? 0 },
@@ -92,7 +83,6 @@ export async function getScoreDistribution(): Promise<ScoreDistribution[]> {
 
 export async function getMonthlyTrend(): Promise<MonthlyTrend[]> {
   const { fraud } = await getDashboardData();
-
   return (fraud.alerts_evolution ?? []).map((item) => ({
     month: String(item.date),
     averageScore: 0,

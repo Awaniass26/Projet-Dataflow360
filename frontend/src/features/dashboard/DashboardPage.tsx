@@ -1,15 +1,23 @@
-/**
- * Page Dashboard — KPI + graphiques
- */
-
-import { Header } from "@/components/layout/Header";
-import { Card, CardTitle, CardValue } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card, KpiCard } from "@/components/ui/Card";
 import { Loading, ErrorMessage } from "@/components/ui/Loading";
-import { useDashboardKPI, useScoreDistribution, useMonthlyTrend } from "@/hooks/useDashboard";
-import { formatAmount } from "@/lib/utils";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend,
+  useDashboardKPI,
+  useScoreDistribution,
+  useMonthlyTrend,
+} from "@/hooks/useDashboard";
+import { formatAmount, formatNumber } from "@/lib/utils";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Legend,
 } from "recharts";
 
 export function DashboardPage() {
@@ -18,88 +26,98 @@ export function DashboardPage() {
   const { data: trend } = useMonthlyTrend();
 
   if (kpiLoading) return <Loading message="Chargement du dashboard..." />;
-  if (kpiError || !kpi) return <ErrorMessage message="Impossible de charger les KPI." />;
+  if (kpiError || !kpi) {
+    return <ErrorMessage message="Impossible de charger les KPI." />;
+  }
 
   return (
     <div>
-      <Header
+      <PageHeader
         title="Dashboard"
-        subtitle="Vue d'ensemble du scoring crédit et de la détection de fraude"
+        subtitle="Vue d'ensemble — scoring crédit & détection de fraude Mobile Money"
       />
 
-      {/* KPI Cards */}
-    <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-      <Card>
-        <CardTitle>Score moyen</CardTitle>
-        <CardValue>{(kpi.averageCreditScore ?? 0).toFixed(3)}</CardValue>
-      </Card>
-      <Card>
-        <CardTitle>Total clients</CardTitle>
-        <CardValue>{(kpi.totalClients ?? 0).toLocaleString("fr-FR")}</CardValue>
-      </Card>
-      <Card>
-        <CardTitle>Clients à risque</CardTitle>
-        <CardValue className="text-danger">{kpi.highRiskClients ?? 0}</CardValue>
-      </Card>
-      <Card>
-        <CardTitle>Alertes/jour</CardTitle>
-        <CardValue className="text-warning">{kpi.fraudAlertsToday ?? 0}</CardValue>
-      </Card>
-      <Card>
-        <CardTitle>Transactions</CardTitle>
-        <CardValue>
-          {(kpi.totalTransactionsToday ?? 0).toLocaleString("fr-FR")}
-        </CardValue>
-      </Card>
-      <Card>
-        <CardTitle>Volume/jour</CardTitle>
-        <CardValue className="text-lg">
-          {formatAmount(kpi.totalVolumeToday ?? 0)}
-        </CardValue>
-      </Card>
-      <Card>
-        <CardTitle>Inscriptions/Semaine</CardTitle>
-        <CardValue className="text-primary-600">
-          {kpi.newRegistrationsThisWeek ?? 0}
-        </CardValue>
-      </Card>
-    </div>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <KpiCard
+          title="Score crédit moyen"
+          value={(kpi.averageCreditScore ?? 0).toFixed(3)}
+          accent="blue"
+        />
+        <KpiCard
+          title="Total clients"
+          value={formatNumber(kpi.totalClients ?? 0)}
+          accent="blue"
+        />
+        <KpiCard
+          title="Clients à risque"
+          value={formatNumber(kpi.highRiskClients ?? 0)}
+          accent="danger"
+        />
+        <KpiCard
+          title="Alertes du jour"
+          value={formatNumber(kpi.fraudAlertsToday ?? 0)}
+          accent="gold"
+        />
+        <KpiCard
+          title="Transactions"
+          value={formatNumber(kpi.totalTransactionsToday ?? 0)}
+          accent="green"
+        />
+        <KpiCard
+          title="Volume suspect"
+          value={formatAmount(kpi.totalVolumeToday ?? 0)}
+          accent="gold"
+        />
+        <KpiCard
+          title="Clients chargés"
+          value={formatNumber(kpi.newRegistrationsThisWeek ?? 0)}
+          accent="green"
+        />
+      </div>
 
-      {/* Graphiques */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Distribution des scores de crédit
+          <h3 className="mb-4 text-sm font-semibold text-slate-800">
+            Distribution des risques crédit
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={distribution || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="range" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Clients" />
+                <Bar
+                  dataKey="count"
+                  fill="#d33636"
+                  radius={[6, 6, 0, 0]}
+                  name="Demandes"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
         <Card>
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Évolution score, fraudes & inscriptions en fonction du temps
+          <h3 className="mb-4 text-sm font-semibold text-slate-800">
+            Évolution des alertes fraude
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="averageScore" name="Score moyen" stroke="#3b82f6" strokeWidth={2} dot={{ r: 0.5 }} />
-                <Line yAxisId="right" type="monotone" dataKey="fraudCount" name="Alertes fraude" stroke="#dc2626" strokeWidth={2} dot={{ r: 0.5 }} />
-                <Line yAxisId="right" type="monotone" dataKey="registrations" name="Inscriptions" stroke="#16a34a" strokeWidth={2} dot={{ r: 0.5 }} />
+                <Line
+                  type="monotone"
+                  dataKey="fraudCount"
+                  name="Alertes"
+                  stroke="#d33636"
+                  strokeWidth={2}
+                  dot={{ r: 0.5 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>

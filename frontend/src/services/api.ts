@@ -1,12 +1,20 @@
 /**
- * Instance Axios centrale.
- * Tous les appels API passent par ici.
+ * Instance Axios centrale — SenTerangaSafe
+ *
+ * VITE_API_BASE_URL :
+ *  - http://localhost:8000  → appels directs vers l'API (dev / compose classique)
+ *  - /api                   → passe par le proxy nginx (même origine)
+ *  - https://api.example.com → production
  */
 
 import axios from "axios";
 
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
+  "http://localhost:8000";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },

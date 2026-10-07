@@ -1,11 +1,10 @@
-/**
- * Service d'authentification frontend.
- * POST /auth/login attend x-www-form-urlencoded
- * avec username (= email) + password.
- */
-
 import api from "./api";
-import type { AuthUser, TokenResponse } from "@/types/auth";
+import type {
+  AuthUser,
+  CreateUserPayload,
+  TokenResponse,
+  UserRole,
+} from "@/types/auth";
 
 const TOKEN_KEY = "access_token";
 const USER_KEY = "auth_user";
@@ -28,6 +27,10 @@ export function isAuthenticated(): boolean {
   return Boolean(getAccessToken());
 }
 
+export function isAdmin(): boolean {
+  return getStoredUser()?.role === "admin";
+}
+
 export async function login(
   email: string,
   password: string
@@ -42,7 +45,6 @@ export async function login(
 
   localStorage.setItem(TOKEN_KEY, data.access_token);
   localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-
   return data;
 }
 
@@ -52,7 +54,17 @@ export async function getMe(): Promise<AuthUser> {
   return data;
 }
 
+/** Création d'utilisateur — réservé admin (POST /auth/users) */
+export async function createUser(
+  payload: CreateUserPayload
+): Promise<AuthUser> {
+  const { data } = await api.post<AuthUser>("/auth/users", payload);
+  return data;
+}
+
 export function logout(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }
+
+export type { UserRole };

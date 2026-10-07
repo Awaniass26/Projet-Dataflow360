@@ -1,7 +1,3 @@
-/**
- * Types alignés sur l'API FastAPI /clients et /credit
- */
-
 export interface Client {
   client_id: string;
   name: string;

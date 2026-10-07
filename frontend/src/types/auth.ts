@@ -1,8 +1,4 @@
-/**
- * Types alignés sur l'API FastAPI /auth/*
- */
-
-export type UserRole = "admin" | "analyst";
+export type UserRole = "admin" | "analyst" | "viewer";
 
 export interface AuthUser {
   id: number;
@@ -18,4 +14,11 @@ export interface TokenResponse {
   token_type: string;
   expires_in: number;
   user: AuthUser;
+}
+
+export interface CreateUserPayload {
+  email: string;
+  password: string;
+  full_name: string;
+  role: UserRole;
 }
