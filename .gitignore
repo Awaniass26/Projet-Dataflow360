@@ -8,10 +8,13 @@
 data/synthetic/*.csv
 data/processed/*.csv
 
-notebooks/dataset_Scoring_credit.csv
-notebooks/dataset_credit_clean.csv
-notebooks/mobile_money_credit_scoring_5000.csv
-notebooks/dataflow360_mobile_money_credit(1).csv
+# Datasets locaux
 
+*.csv
+!*.csv.dvc
 
-printf "\n# MLflow\nmodels/fraude/mlruns/\nmodels/fraude/mlflow.db\nmodels/mlflow.db\n.venv/\n" >> .gitignore
+# MLflow
+
+models/fraude/mlruns/
+models/fraude/mlflow.db
+models/mlflow.db
