@@ -43,7 +43,7 @@ def main() -> None:
             tx = _generate_transaction()
             producer.produce(topic, json.dumps(tx).encode("utf-8"))
             producer.flush()
-            print(f"Envoyé : {tx['transaction_id']} ({tx['amount']} FCFA)")
+            print(f"Envoyé : {tx['transaction_id']} ({tx['amount']})")
         except Exception as exc:  # noqa: BLE001
             print(f"Erreur producteur : {exc}")
         time.sleep(3)
