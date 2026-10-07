@@ -1,5 +1,5 @@
 /**
- * Routes de l'application Dataflow
+ * Routes SenTerangaSafe
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -10,6 +10,7 @@ import { ClientsPage } from "@/features/clients/ClientsPage";
 import { ClientDetailPage } from "@/features/clients/ClientDetailPage";
 import { FraudAlertsPage } from "@/features/fraud/FraudAlertsPage";
 import { ScoringFormPage } from "@/features/scoring/ScoringFormPage";
+import { UsersPage } from "@/features/users/UsersPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 
 const queryClient = new QueryClient({
@@ -47,9 +48,10 @@ export default function App() {
             <Route path="/clients/:id" element={<ClientDetailPage />} />
             <Route path="/scoring" element={<ScoringFormPage />} />
             <Route path="/fraud" element={<FraudAlertsPage />} />
+            <Route path="/users" element={<UsersPage />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

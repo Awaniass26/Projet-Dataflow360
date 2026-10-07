@@ -1,45 +1,29 @@
-/**
- * Badge de niveau de risque / statut d'alerte
- */
-
 import { cn } from "@/lib/utils";
-import type { FraudStatus, RiskLevel } from "@/types/fraud";
 
-const riskStyles: Record<RiskLevel, string> = {
-  low: "bg-green-50 text-green-700 ring-green-600/20",
-  medium: "bg-orange-50 text-orange-700 ring-orange-600/20",
-  high: "bg-red-50 text-red-700 ring-red-600/20",
+const variants: Record<string, string> = {
+  default: "bg-slate-100 text-slate-700",
+  blue: "bg-brand-blue-soft text-brand-blue",
+  gold: "bg-brand-gold-soft text-brand-gold",
+  green: "bg-brand-green-soft text-brand-green",
+  success: "bg-emerald-50 text-emerald-700",
+  warning: "bg-amber-50 text-amber-700",
+  danger: "bg-red-50 text-red-700",
 };
 
-const statusStyles: Record<FraudStatus, string> = {
-  pending: "bg-orange-50 text-orange-700 ring-orange-600/20",
-  reviewed: "bg-blue-50 text-blue-700 ring-blue-600/20",
-  confirmed: "bg-red-50 text-red-700 ring-red-600/20",
-  dismissed: "bg-gray-100 text-gray-600 ring-gray-500/20",
-};
-
-interface BadgeProps {
+export function Badge({
+  children,
+  variant = "default",
+  className,
+}: {
   children: React.ReactNode;
-  variant?: "risk" | "status" | "default";
-  value?: string;
+  variant?: keyof typeof variants;
   className?: string;
-}
-
-export function Badge({ children, variant = "default", value, className }: BadgeProps) {
-  let styles = "bg-gray-50 text-gray-700 ring-gray-600/20";
-
-  if (variant === "risk" && value) {
-    styles = riskStyles[value as RiskLevel] ?? styles;
-  }
-  if (variant === "status" && value) {
-    styles = statusStyles[value as FraudStatus] ?? styles;
-  }
-
+}) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset",
-        styles,
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        variants[variant] ?? variants.default,
         className
       )}
     >

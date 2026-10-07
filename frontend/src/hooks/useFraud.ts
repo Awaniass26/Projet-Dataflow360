@@ -4,7 +4,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-
 import {
   getFraudAlerts,
   getFraudStats,
@@ -17,7 +16,6 @@ export function useFraudAlerts(params: FraudAlertsParams = {}) {
   return useQuery({
     queryKey: ["fraud", "alerts", params],
     queryFn: () => getFraudAlerts(params),
-    // Garde la page précédente affichée pendant le changement de page/filtre
     placeholderData: keepPreviousData,
   });
 }
@@ -31,7 +29,6 @@ export function useFraudStats() {
 
 export function useUpdateFraudAlert() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: ({
       alertId,
@@ -40,7 +37,6 @@ export function useUpdateFraudAlert() {
       alertId: number;
       payload: FraudAlertUpdate;
     }) => updateFraudAlert(alertId, payload),
-    // Rafraîchit la liste ET les KPI
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["fraud"] }),
   });
 }

@@ -1,14 +1,7 @@
-/**
- * Page Alertes de fraude
- * - KPI issus de GET /fraud/stats
- * - Liste paginée et filtrée côté serveur (GET /fraud/alerts)
- * - Changement de statut d'une alerte (PATCH /fraud/alerts/{id})
- */
-
 import { useState } from "react";
 import axios from "axios";
-import { Header } from "@/components/layout/Header";
-import { Card, CardTitle, CardValue } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card, KpiCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Loading, ErrorMessage } from "@/components/ui/Loading";
 import {
@@ -22,12 +15,11 @@ import {
   RISK_LEVELS,
   STATUS_LABELS,
 } from "@/lib/labels";
+import { formatAmount, formatPercent } from "@/lib/utils";
+import { getStoredUser } from "@/services/auth";
 import type { FraudStatus, RiskLevel } from "@/types/fraud";
 
 const PAGE_SIZE = 10;
-
-// Nom enregistré dans "reviewed_by" tant qu'il n'y a pas d'authentification réelle
-const REVIEWER = "analyste";
 
 function getErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
@@ -36,6 +28,12 @@ function getErrorMessage(err: unknown): string {
     if (err.code === "ERR_NETWORK") return "Impossible de joindre l'API.";
   }
   return err instanceof Error ? err.message : "Une erreur est survenue.";
+}
+
+function riskVariant(level: RiskLevel) {
+  if (level === "high") return "danger" as const;
+  if (level === "medium") return "warning" as const;
+  return "success" as const;
 }
 
 export function FraudAlertsPage() {
@@ -56,176 +54,178 @@ export function FraudAlertsPage() {
   const { data: stats, isLoading: statsLoading } = useFraudStats();
   const updateAlert = useUpdateFraudAlert();
 
+  const reviewer = getStoredUser()?.email ?? "analyste";
+
   if (alertsLoading || statsLoading) {
     return <Loading message="Chargement des alertes fraude..." />;
   }
   if (alertsError || !alerts) {
-    return <ErrorMessage message={getErrorMessage(alertsError) || "Impossible de charger les alertes."} />;
+    return (
+      <ErrorMessage
+        message={getErrorMessage(alertsError) || "Impossible de charger les alertes."}
+      />
+    );
   }
-
-  const pending = stats?.alerts_by_status.pending ?? 0;
 
   return (
     <div>
-      <Header
+      <PageHeader
         title="Alertes Fraude"
-        subtitle="Détection et suivi des comportements à risque"
+        subtitle="Détection et suivi des comportements à risque Mobile Money"
       />
 
-      {/* KPI */}
       {stats && (
-        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-          <Card>
-            <CardTitle>Total alertes</CardTitle>
-            <CardValue>{stats.total_alerts}</CardValue>
-          </Card>
-          <Card>
-            <CardTitle>Risque élevé</CardTitle>
-            <CardValue className="text-danger">
-              {stats.alerts_by_risk_level.high ?? 0}
-            </CardValue>
-          </Card>
-          <Card>
-            <CardTitle>En attente</CardTitle>
-            <CardValue className="text-warning">{pending}</CardValue>
-          </Card>
-          <Card>
-            <CardTitle>Traitées</CardTitle>
-            <CardValue className="text-success">
-              {stats.total_alerts - pending}
-            </CardValue>
-          </Card>
-          <Card>
-            <CardTitle>Taux de transactions suspectes</CardTitle>
-            <CardValue>{(stats.suspicious_rate * 100).toFixed(3)} %</CardValue>
-          </Card>
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <KpiCard title="Total alertes" value={stats.total_alerts ?? 0} />
+          <KpiCard
+            title="Transactions"
+            value={stats.total_transactions ?? 0}
+            accent="green"
+          />
+          <KpiCard
+            title="Taux suspect"
+            value={formatPercent(stats.suspicious_rate ?? 0)}
+            accent="gold"
+          />
+          <KpiCard
+            title="Montant suspect"
+            value={formatAmount(stats.suspicious_amount ?? 0)}
+            accent="gold"
+          />
+          <KpiCard
+            title="En attente"
+            value={stats.alerts_by_status?.pending ?? 0}
+            accent="danger"
+          />
         </div>
       )}
 
-      {/* Filtres (appliqués côté serveur) */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <select
-          value={riskLevel}
-          onChange={(e) => {
-            setRiskLevel(e.target.value as RiskLevel | "all");
-            setPage(1);
-          }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
-        >
-          <option value="all">Tous niveaux de risque</option>
-          {RISK_LEVELS.map((level) => (
-            <option key={level} value={level}>
-              Risque {RISK_LABELS[level].toLowerCase()}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as FraudStatus | "all");
-            setPage(1);
-          }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
-        >
-          <option value="all">Tous statuts</option>
-          {FRAUD_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
-
-        <p className="text-sm text-gray-500 sm:ml-auto">
-          {alerts.total} alerte{alerts.total > 1 ? "s" : ""} trouvée
-          {alerts.total > 1 ? "s" : ""}
-        </p>
-      </div>
-
-      {updateAlert.isError && (
-        <div className="mb-4">
-          <ErrorMessage message={`Mise à jour impossible : ${getErrorMessage(updateAlert.error)}`} />
+      <Card className="mb-6">
+        <div className="flex flex-wrap gap-3">
+          <select
+            value={riskLevel}
+            onChange={(e) => {
+              setRiskLevel(e.target.value as RiskLevel | "all");
+              setPage(1);
+            }}
+            className="input-field !mt-0 w-auto min-w-[160px]"
+          >
+            <option value="all">Tous les risques</option>
+            {RISK_LEVELS.map((r) => (
+              <option key={r} value={r}>
+                {RISK_LABELS[r]}
+              </option>
+            ))}
+          </select>
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value as FraudStatus | "all");
+              setPage(1);
+            }}
+            className="input-field !mt-0 w-auto min-w-[180px]"
+          >
+            <option value="all">Tous les statuts</option>
+            {FRAUD_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+      </Card>
 
-      {/* Tableau */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-card">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-100">
+            <thead className="bg-slate-50/80">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Transaction</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Score</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Risque</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Explication</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Statut</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Traité par</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Alerte
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Transaction
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Score
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Risque
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Statut
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Action
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-slate-100">
               {alerts.items.map((alert) => (
-                <tr key={alert.alert_id} className="transition-colors hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                <tr key={alert.alert_id} className="hover:bg-slate-50/80">
+                  <td className="whitespace-nowrap px-5 py-3 text-sm font-medium">
+                    #{alert.alert_id}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-3 font-mono text-xs text-slate-500">
                     {alert.transaction_id}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {alert.risk_score.toFixed(2)}
+                  <td className="whitespace-nowrap px-5 py-3 text-sm font-semibold">
+                    {(alert.risk_score ?? 0).toFixed(3)}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <Badge variant="risk" value={alert.risk_level}>
+                  <td className="whitespace-nowrap px-5 py-3">
+                    <Badge variant={riskVariant(alert.risk_level)}>
                       {RISK_LABELS[alert.risk_level]}
                     </Badge>
                   </td>
-                  <td className="max-w-xs px-6 py-4 text-sm text-gray-600">
-                    {alert.explanation ?? "—"}
+                  <td className="whitespace-nowrap px-5 py-3">
+                    <Badge>{STATUS_LABELS[alert.status]}</Badge>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="status" value={alert.status}>
-                        {STATUS_LABELS[alert.status]}
-                      </Badge>
-                      <select
-                        aria-label={`Changer le statut de l'alerte ${alert.alert_id}`}
-                        value={alert.status}
-                        disabled={updateAlert.isPending}
-                        onChange={(e) =>
-                          updateAlert.mutate({
-                            alertId: alert.alert_id,
-                            payload: {
-                              status: e.target.value as FraudStatus,
-                              reviewed_by: REVIEWER,
-                            },
-                          })
-                        }
-                        className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-primary-500 focus:outline-none disabled:opacity-50"
-                      >
-                        {FRAUD_STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {STATUS_LABELS[s]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                    {alert.reviewed_by ?? "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {new Date(alert.created_at).toLocaleString("fr-FR", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                  <td className="whitespace-nowrap px-5 py-3">
+                    {alert.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-brand-green hover:underline"
+                          disabled={updateAlert.isPending}
+                          onClick={() =>
+                            updateAlert.mutate({
+                              alertId: alert.alert_id,
+                              payload: {
+                                status: "confirmed",
+                                reviewed_by: reviewer,
+                              },
+                            })
+                          }
+                        >
+                          Confirmer
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-slate-500 hover:underline"
+                          disabled={updateAlert.isPending}
+                          onClick={() =>
+                            updateAlert.mutate({
+                              alertId: alert.alert_id,
+                              payload: {
+                                status: "dismissed",
+                                reviewed_by: reviewer,
+                              },
+                            })
+                          }
+                        >
+                          Rejeter
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
               {alerts.items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
-                    Aucune alerte trouvée pour ces filtres
+                  <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">
+                    Aucune alerte pour ces filtres.
                   </td>
                 </tr>
               )}
@@ -233,26 +233,31 @@ export function FraudAlertsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="text-sm font-medium text-primary-600 hover:text-primary-800 disabled:cursor-not-allowed disabled:text-gray-400"
-          >
-            ← Précédent
-          </button>
-          <span className="text-sm text-gray-600">
-            Page {alerts.page} / {Math.max(alerts.total_pages, 1)}
-          </span>
-          <button
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= alerts.total_pages}
-            className="text-sm font-medium text-primary-600 hover:text-primary-800 disabled:cursor-not-allowed disabled:text-gray-400"
-          >
-            Suivant →
-          </button>
-        </div>
+        {alerts.total_pages > 1 && (
+          <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3">
+            <p className="text-xs text-slate-400">
+              Page {alerts.page} / {alerts.total_pages} · {alerts.total} alerte(s)
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-secondary !py-1.5 !text-xs"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Précédent
+              </button>
+              <button
+                type="button"
+                className="btn-secondary !py-1.5 !text-xs"
+                disabled={page >= alerts.total_pages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Suivant
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

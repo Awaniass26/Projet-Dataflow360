@@ -1,17 +1,5 @@
-/**
- * Types alignés sur l'API FastAPI /fraud/*
- */
-
-export type RiskLevel =
-  | "low"
-  | "medium"
-  | "high";
-
-export type FraudStatus =
-  | "pending"
-  | "reviewed"
-  | "confirmed"
-  | "dismissed";
+export type RiskLevel = "low" | "medium" | "high";
+export type FraudStatus = "pending" | "reviewed" | "confirmed" | "dismissed";
 
 export interface FraudAlert {
   alert_id: number;
@@ -33,6 +21,12 @@ export interface FraudAlertListResponse {
   total_pages: number;
 }
 
+export interface FraudEvolutionPoint {
+  date: string;
+  alert_count: number;
+  suspicious_amount: number;
+}
+
 export interface FraudStats {
   total_transactions: number;
   total_alerts: number;
@@ -41,12 +35,6 @@ export interface FraudStats {
   alerts_by_status: Record<string, number>;
   alerts_by_risk_level: Record<string, number>;
   alerts_evolution: FraudEvolutionPoint[];
-}
-
-export interface FraudEvolutionPoint {
-  date: string;
-  alert_count: number;
-  suspicious_amount: number;
 }
 
 export interface FraudAlertUpdate {

@@ -1,7 +1,3 @@
-/**
- * Hooks React Query pour le Dashboard
- */
-
 import { useQuery } from "@tanstack/react-query";
 import {
   getDashboardKPI,

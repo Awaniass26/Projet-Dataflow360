@@ -1,230 +1,136 @@
 import { Link, useParams } from "react-router-dom";
-
-import { Header } from "@/components/layout/Header";
-import { Card, CardTitle, CardValue } from "@/components/ui/Card";
+import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card, CardTitle, CardValue, KpiCard } from "@/components/ui/Card";
 import { Loading, ErrorMessage } from "@/components/ui/Loading";
 import { useClient } from "@/hooks/useClients";
 import { formatAmount } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
 
 export function ClientDetailPage() {
-  const { id } = useParams<{
-    id: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
+  const { data: client, isLoading, error } = useClient(id);
 
-  const {
-    data: client,
-    isLoading,
-    error,
-  } = useClient(id);
+  if (isLoading) return <Loading message="Chargement du client..." />;
+  if (error || !client) return <ErrorMessage message="Client introuvable." />;
 
-  if (isLoading) {
-    return (
-      <Loading message="Chargement du client..." />
-    );
-  }
-
-  if (error || !client) {
-    return (
-      <ErrorMessage message="Client introuvable." />
-    );
-  }
+  const totalTx = client.transactions?.length ?? 0;
+  const totalCredits = client.credit_applications?.length ?? 0;
+  const volume = (client.transactions ?? []).reduce(
+    (sum, t) => sum + (t.amount ?? 0),
+    0
+  );
 
   return (
     <div>
       <Link
         to="/clients"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800"
+        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-800"
       >
         <ArrowLeft className="h-4 w-4" />
         Retour aux clients
       </Link>
 
-      <Header
-        title={client.client_id}
-        subtitle={`Client ${client.client_id}`}
+      <PageHeader
+        title={client.name || client.client_id}
+        subtitle={`Identifiant ${client.client_id}`}
       />
+
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Âge" value={client.age} />
+        <KpiCard title="Région" value={client.region} accent="gold" />
+        <KpiCard title="Transactions" value={totalTx} accent="green" />
+        <KpiCard title="Volume" value={formatAmount(volume)} accent="blue" />
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card>
-          <CardTitle>Identifiant</CardTitle>
-          <CardValue className="text-2xl">
-            {client.client_id}
-          </CardValue>
-        </Card>
-
-        <Card>
-          <CardTitle>Âge</CardTitle>
-          <CardValue>
-            {client.age}
-          </CardValue>
-        </Card>
-
-        <Card>
-          <CardTitle>Sexe</CardTitle>
-          <CardValue>
-            {client.sexe}
-          </CardValue>
-        </Card>
-
-        <Card className="lg:col-span-3">
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Informations du compte
-          </h3>
-
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-sm text-gray-500">
-                Région
-              </dt>
-
-              <dd className="mt-1 font-medium text-gray-900">
-                {client.region}
-              </dd>
+          <CardTitle>Profil</CardTitle>
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Sexe</span>
+              <span className="font-medium">{client.sexe}</span>
             </div>
-
-            <div>
-              <dt className="text-sm text-gray-500">
-                Type de compte
-              </dt>
-
-              <dd className="mt-1 font-medium text-gray-900">
-                {client.account_type}
-              </dd>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Type de compte</span>
+              <span className="font-medium">{client.account_type}</span>
             </div>
-
-            <div>
-              <dt className="text-sm text-gray-500">
-                Nombre de transactions
-              </dt>
-
-              <dd className="mt-1 font-medium text-gray-900">
-                {client.transactions.length}
-              </dd>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Crédits</span>
+              <span className="font-medium">{totalCredits}</span>
             </div>
-          </dl>
+          </div>
         </Card>
 
         <Card className="lg:col-span-2">
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Transactions
-          </h3>
-
-          {client.transactions.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              Aucune transaction.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="px-3 py-2 text-left text-xs text-gray-500">
-                      ID
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs text-gray-500">
-                      Type
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs text-gray-500">
-                      Canal
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs text-gray-500">
-                      Montant
-                    </th>
+          <CardTitle>Dernières transactions</CardTitle>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="pb-2 pr-4">ID</th>
+                  <th className="pb-2 pr-4">Type</th>
+                  <th className="pb-2 pr-4">Canal</th>
+                  <th className="pb-2 text-right">Montant</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(client.transactions ?? []).slice(0, 8).map((tx) => (
+                  <tr key={tx.transaction_id}>
+                    <td className="py-2 pr-4 font-mono text-xs text-slate-500">
+                      {tx.transaction_id}
+                    </td>
+                    <td className="py-2 pr-4">{tx.type}</td>
+                    <td className="py-2 pr-4">{tx.channel}</td>
+                    <td className="py-2 text-right font-medium">
+                      {formatAmount(tx.amount)}
+                    </td>
                   </tr>
-                </thead>
-
-                <tbody>
-                  {client.transactions.map(
-                    (transaction) => (
-                      <tr
-                        key={
-                          transaction.transaction_id
-                        }
-                        className="border-b"
-                      >
-                        <td className="px-3 py-3 text-sm">
-                          {transaction.transaction_id}
-                        </td>
-
-                        <td className="px-3 py-3 text-sm">
-                          {transaction.type}
-                        </td>
-
-                        <td className="px-3 py-3 text-sm">
-                          {transaction.channel}
-                        </td>
-
-                        <td className="px-3 py-3 text-right text-sm font-medium">
-                          {formatAmount(
-                            transaction.amount
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-
-        <Card>
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Demandes de crédit
-          </h3>
-
-          {client.credit_applications.length ===
-          0 ? (
-            <p className="text-sm text-gray-500">
-              Aucune demande de crédit.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {client.credit_applications.map(
-                (application) => (
-                  <div
-                    key={
-                      application.application_id
-                    }
-                    className="rounded-lg border p-4"
-                  >
-                    <p className="text-sm font-medium">
-                      {application.application_id}
-                    </p>
-
-                    <p className="mt-2 text-sm text-gray-600">
-                      Montant :{" "}
-                      {formatAmount(
-                        application.requested_amount
-                      )}
-                    </p>
-
-                    <p className="text-sm text-gray-600">
-                      Durée :{" "}
-                      {application.duration} mois
-                    </p>
-
-                    <p className="text-sm text-gray-600">
-                      Revenus :{" "}
-                      {formatAmount(
-                        application.income
-                      )}
-                    </p>
-
-                    <p className="text-sm text-gray-600">
-                      Dépenses :{" "}
-                      {formatAmount(
-                        application.expenses
-                      )}
-                    </p>
-                  </div>
-                )
-              )}
-            </div>
-          )}
+                ))}
+                {(client.transactions ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-slate-400">
+                      Aucune transaction
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
       </div>
+
+      {(client.credit_applications ?? []).length > 0 && (
+        <Card className="mt-6">
+          <CardTitle>Demandes de crédit</CardTitle>
+          <CardValue className="!text-base !font-medium text-slate-500">
+            {totalCredits} demande(s)
+          </CardValue>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+                  <th className="pb-2 pr-4">ID</th>
+                  <th className="pb-2 pr-4">Montant</th>
+                  <th className="pb-2 pr-4">Durée</th>
+                  <th className="pb-2 pr-4">Revenus</th>
+                  <th className="pb-2">Dépenses</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {client.credit_applications.map((app) => (
+                  <tr key={app.application_id}>
+                    <td className="py-2 pr-4 font-mono text-xs">{app.application_id}</td>
+                    <td className="py-2 pr-4">{formatAmount(app.requested_amount)}</td>
+                    <td className="py-2 pr-4">{app.duration} mois</td>
+                    <td className="py-2 pr-4">{formatAmount(app.income)}</td>
+                    <td className="py-2">{formatAmount(app.expenses)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

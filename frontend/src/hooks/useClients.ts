@@ -1,9 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-
-import {
-  getClients,
-  getClientById,
-} from "@/services/clients";
+import { getClients, getClientById } from "@/services/clients";
 
 export function useClients(limit = 50) {
   return useQuery({
