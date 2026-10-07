@@ -22,9 +22,12 @@ const queryClient = new QueryClient({
   },
 });
 
+import { isAuthenticated } from "@/services/auth";
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem("access_token");
-  if (!token) return <Navigate to="/login" replace />;
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 }
 

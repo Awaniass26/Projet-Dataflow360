@@ -27,7 +27,9 @@ import type { FraudStatus, RiskLevel } from "@/types/fraud";
 const PAGE_SIZE = 10;
 
 // Nom enregistré dans "reviewed_by" tant qu'il n'y a pas d'authentification réelle
-const REVIEWER = "analyste";
+import { getStoredUser } from "@/services/auth";
+
+const REVIEWER = getStoredUser()?.email ?? "analyste";
 
 function getErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {

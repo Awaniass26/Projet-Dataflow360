@@ -1,7 +1,7 @@
 /**
  * Sidebar de navigation principale
  */
-
+import { logout } from "@/services/auth";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -60,9 +60,9 @@ export function Sidebar() {
         <button
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
           onClick={() => {
-            localStorage.removeItem("access_token");
-            window.location.href = "/login";
-          }}
+              logout();
+              window.location.href = "/login";
+            }}
         >
           <LogOut className="h-5 w-5" />
           Déconnexion

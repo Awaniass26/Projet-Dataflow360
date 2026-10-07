@@ -1,13 +1,22 @@
 /**
- * Types alignés sur l'API FastAPI.
+ * Types alignés sur l'API FastAPI /clients et /credit
  */
 
 export interface Client {
   client_id: string;
+  name: string;
   age: number;
   sexe: string;
   region: string;
   account_type: string;
+}
+
+export interface ClientListResponse {
+  items: Client[];
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
 }
 
 export interface ClientTransaction {
@@ -31,9 +40,6 @@ export interface ClientDetail extends Client {
   credit_applications: ClientCreditApplication[];
 }
 
-/**
- * Données réellement attendues par POST /credit/score
- */
 export interface CreditApplicationInput {
   application_id: string;
   account_id: string;
@@ -46,9 +52,6 @@ export interface CreditApplicationInput {
   repayment_history_score?: number;
 }
 
-/**
- * Réponse de POST /credit/score
- */
 export interface CreditScoreResponse {
   application_id: string;
   risk_score: number | null;
