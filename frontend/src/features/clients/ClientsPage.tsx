@@ -38,6 +38,7 @@ export function ClientsPage() {
     return clients.filter((client) =>
       [
         client.client_id,
+        client.name,
         client.region,
         client.account_type,
         client.sexe,
@@ -111,7 +112,11 @@ export function ClientsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Client
+                  ID client
+                </th>
+
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Nom 
                 </th>
 
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
