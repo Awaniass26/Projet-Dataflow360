@@ -1,58 +1,70 @@
 /**
- * Service Clients
- * Mode mock pour l'instant — remplacer par les appels FastAPI plus tard
+ * Services Clients / Crédit
+ *
+ * Tous les endpoints correspondent au contrat FastAPI.
  */
 
-import type { Client, ClientDetail, ScoringFormData } from "@/types/client";
-import { mockClients, mockClientDetail } from "@/mocks/clients";
+import api from "./api";
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import type {
+  Client,
+  ClientDetail,
+  CreditApplicationInput,
+  CreditScoreResponse,
+} from "@/types/client";
 
-export async function getClients(): Promise<Client[]> {
-  await delay(400);
-  return mockClients;
-}
+/**
+ * GET /clients
+ */
+export async function getClients(
+  limit = 50
+): Promise<Client[]> {
+  const { data } = await api.get<Client[]>(
+    "/clients",
+    {
+      params: { limit },
+    }
+  );
 
-export async function getClientById(id: number): Promise<ClientDetail> {
-  await delay(300);
-  if (id === 1) return mockClientDetail;
-  const client = mockClients.find((c) => c.id === id);
-  if (!client) throw new Error("Client introuvable");
-  return {
-    ...client,
-    explanation: `Score calculé à partir de l'historique transactionnel de ${client.name}. Facteurs principaux : fréquence des opérations, montants moyens et ancienneté du compte.`,
-    scoreHistory: [
-      { date: "Juil", score: Math.max(300, client.score - 40) },
-      { date: "Août", score: Math.max(300, client.score - 20) },
-      { date: "Sept", score: client.score },
-    ],
-    recentTransactions: [],
-    kpis: {
-      depositFrequency: Math.floor(Math.random() * 15) + 3,
-      withdrawalFrequency: Math.floor(Math.random() * 10) + 2,
-      averageBalance: client.averageAmount * 5,
-      failedTransactions: Math.floor(Math.random() * 5),
-      uniqueCounterparties: Math.floor(Math.random() * 40) + 5,
-    },
-  };
+  return data;
 }
 
 /**
- * Soumet le formulaire de scoring
- * En mode mock : simule un score et retourne un succès
+ * GET /clients/{client_id}
  */
-export async function submitScoringForm(data: ScoringFormData): Promise<{ success: boolean; score: number; clientId: number }> {
-  await delay(800);
-  // Simulation simple d'un score basé sur les données du formulaire
-  let score = 400;
-  if (data.accountAgeMonths > 12) score += 100;
-  if (data.accountAgeMonths > 24) score += 50;
-  if (data.averageMonthlyDeposit > 50000) score += 80;
-  if (data.totalTransactionsLast3Months > 30) score += 70;
-  if (data.hasLoanHistory) score += 40;
-  score = Math.min(950, score + Math.floor(Math.random() * 50));
+export async function getClientById(
+  clientId: string
+): Promise<ClientDetail> {
+  const { data } = await api.get<ClientDetail>(
+    `/clients/${encodeURIComponent(clientId)}`
+  );
 
-  return { success: true, score, clientId: mockClients.length + 1 };
+  return data;
+}
+
+/**
+ * POST /credit/score
+ */
+export async function submitCreditScore(
+  application: CreditApplicationInput
+): Promise<CreditScoreResponse> {
+  const { data } = await api.post<CreditScoreResponse>(
+    "/credit/score",
+    application
+  );
+
+  return data;
+}
+
+/**
+ * GET /credit/score/{application_id}
+ */
+export async function getCreditScore(
+  applicationId: string
+): Promise<CreditScoreResponse> {
+  const { data } = await api.get<CreditScoreResponse>(
+    `/credit/score/${encodeURIComponent(applicationId)}`
+  );
+
+  return data;
 }

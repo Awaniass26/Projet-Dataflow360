@@ -5,7 +5,7 @@ Charge les tables générées dans PostgreSQL et MongoDB.
 Redis n'est volontairement pas inclus : il stockera les profils
 comportementaux précalculés (Sprint 4), pas les données brutes générées.
 
-Prérequis : docker-compose up -d
+Prérequis : PostgreSQL et MongoDB doivent être démarrés séparément.
 Usage     : python load_all.py
 """
 

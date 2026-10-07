@@ -31,7 +31,7 @@ export function DashboardPage() {
       <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         <Card>
           <CardTitle>Score moyen</CardTitle>
-          <CardValue>{kpi.averageCreditScore}</CardValue>
+          <CardValue>{kpi.averageCreditScore.toFixed(3)}</CardValue>
         </Card>
         <Card>
           <CardTitle>Total clients</CardTitle>
@@ -42,7 +42,7 @@ export function DashboardPage() {
           <CardValue className="text-danger">{kpi.highRiskClients}</CardValue>
         </Card>
         <Card>
-          <CardTitle>Alertes (jour)</CardTitle>
+          <CardTitle>Alertes/jour</CardTitle>
           <CardValue className="text-warning">{kpi.fraudAlertsToday}</CardValue>
         </Card>
         <Card>
@@ -50,11 +50,11 @@ export function DashboardPage() {
           <CardValue>{kpi.totalTransactionsToday.toLocaleString("fr-FR")}</CardValue>
         </Card>
         <Card>
-          <CardTitle>Volume (jour)</CardTitle>
+          <CardTitle>Volume/jour</CardTitle>
           <CardValue className="text-lg">{formatAmount(kpi.totalVolumeToday)}</CardValue>
         </Card>
         <Card>
-          <CardTitle>Inscriptions (sem.)</CardTitle>
+          <CardTitle>Inscriptions/Semaine</CardTitle>
           <CardValue className="text-primary-600">{kpi.newRegistrationsThisWeek}</CardValue>
         </Card>
       </div>
@@ -91,9 +91,9 @@ export function DashboardPage() {
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="averageScore" name="Score moyen" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
-                <Line yAxisId="right" type="monotone" dataKey="fraudCount" name="Alertes fraude" stroke="#dc2626" strokeWidth={2} dot={{ r: 4 }} />
-                <Line yAxisId="right" type="monotone" dataKey="registrations" name="Inscriptions" stroke="#16a34a" strokeWidth={2} dot={{ r: 4 }} />
+                <Line yAxisId="left" type="monotone" dataKey="averageScore" name="Score moyen" stroke="#3b82f6" strokeWidth={2} dot={{ r: 0.5 }} />
+                <Line yAxisId="right" type="monotone" dataKey="fraudCount" name="Alertes fraude" stroke="#dc2626" strokeWidth={2} dot={{ r: 0.5 }} />
+                <Line yAxisId="right" type="monotone" dataKey="registrations" name="Inscriptions" stroke="#16a34a" strokeWidth={2} dot={{ r: 0.5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

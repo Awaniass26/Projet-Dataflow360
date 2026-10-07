@@ -1,7 +1,3 @@
-/**
- * Types liés au Dashboard (KPI)
- */
-
 export interface DashboardKPI {
   averageCreditScore: number;
   totalClients: number;

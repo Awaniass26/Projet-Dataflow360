@@ -25,11 +25,11 @@ export function Sidebar() {
       {/* Logo Dataflow */}
       <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-6">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-600 text-white font-bold text-sm">
-          DF
+          D
         </div>
         <div>
-          <span className="text-lg font-bold text-gray-900">Dataflow</span>
-          <p className="text-[10px] uppercase tracking-wider text-gray-400">360 Platform</p>
+          <span className="text-lg font-bold text-gray-900">SenTerangaSafe</span>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400">Platform</p>
         </div>
       </div>
 

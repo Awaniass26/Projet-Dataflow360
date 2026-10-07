@@ -1,20 +1,75 @@
 /**
- * Service Fraude
+ * Services fraude.
+ *
+ * Aucun mock ici.
+ * Toutes les données viennent de FastAPI.
  */
 
-import type { FraudAlert, FraudStats } from "@/types/fraud";
-import { mockFraudAlerts, mockFraudStats } from "@/mocks/fraud";
+import api from "./api";
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+import type {
+  FraudAlert,
+  FraudAlertListResponse,
+  FraudAlertUpdate,
+  FraudStats,
+  FraudStatus,
+  RiskLevel,
+} from "@/types/fraud";
+
+export interface FraudAlertsParams {
+  page?: number;
+  pageSize?: number;
+  riskLevel?: RiskLevel;
+  status?: FraudStatus;
 }
 
-export async function getFraudAlerts(): Promise<FraudAlert[]> {
-  await delay(350);
-  return mockFraudAlerts;
+/**
+ * GET /fraud/alerts
+ * Les filtres sont appliqués côté serveur (undefined = paramètre omis).
+ */
+export async function getFraudAlerts({
+  page = 1,
+  pageSize = 50,
+  riskLevel,
+  status,
+}: FraudAlertsParams = {}): Promise<FraudAlertListResponse> {
+  const { data } = await api.get<FraudAlertListResponse>(
+    "/fraud/alerts",
+    {
+      params: {
+        page,
+        page_size: pageSize,
+        risk_level: riskLevel,
+        status,
+      },
+    }
+  );
+
+  return data;
 }
 
+/**
+ * GET /fraud/stats
+ */
 export async function getFraudStats(): Promise<FraudStats> {
-  await delay(250);
-  return mockFraudStats;
+  const { data } = await api.get<FraudStats>(
+    "/fraud/stats"
+  );
+
+  return data;
+}
+
+/**
+ * PATCH /fraud/alerts/{alert_id}
+ */
+export async function updateFraudAlert(
+  alertId: number,
+  payload: FraudAlertUpdate
+): Promise<FraudAlert> {
+  const { data } = await api.patch<FraudAlert>(
+    `/fraud/alerts/${alertId}`,
+    payload
+  );
+
+  return data;
 }
