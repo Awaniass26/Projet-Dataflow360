@@ -75,6 +75,7 @@ def list_fraud_alerts(
     page_size: int = Query(default=50, ge=1, le=1000),
     risk_level: RiskLevel | None = Query(default=None),
     status: FraudAlertStatus | None = Query(default=None),
+    data_origin: str | None = Query(default=None),
     repository: FraudAlertRepository = Depends(
         get_fraud_alert_repository
     ),
@@ -86,6 +87,7 @@ def list_fraud_alerts(
         page_size=page_size,
         risk_level=risk_level,
         status=status,
+        data_origin=data_origin,
     )
 
     total_pages = ceil(total / page_size) if total else 0

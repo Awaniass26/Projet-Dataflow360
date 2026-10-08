@@ -44,18 +44,38 @@ CANAUX = ["app", "USSD", "agent"]
 POIDS_CANAUX = [0.55, 0.30, 0.15]
 
 
+import random
+
+def map_compte_vers_client(id_compte: str) -> str:
+    """Convertit 'cpt_000001' → 'CLI-000001' (format attendu par l'API DataFlow360)."""
+    # Extrait le numéro : cpt_000001 → 000001
+    num = id_compte.replace("cpt_", "").replace("C", "")
+    try:
+        n = int(num)
+        return f"CLI-{n:06d}"
+    except ValueError:
+        return f"CLI-{random.randint(1, 500):06d}"
+
 def charger_comptes_et_appareils():
-    """Récupère la liste des comptes/appareils réels depuis PostgreSQL,
-    pour simuler des transactions cohérentes avec l'historique existant."""
-    url = f"postgresql+psycopg2://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DB}"
+    """Récupère les clients depuis les tables API DataFlow360."""
+    url = f"postgresql+psycopg://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DB}"
     engine = create_engine(url)
-    comptes = pd.read_sql_table("comptes", engine)
-    comptes = comptes[comptes["statut_compte"] == "actif"]
-    # on récupère aussi la table transactions juste pour connaître les appareils par client
-    transactions = pd.read_sql_table("transactions", engine, columns=["id_compte_emetteur", "id_appareil"])
-    appareils_par_compte = transactions.groupby("id_compte_emetteur")["id_appareil"].apply(
-        lambda s: s.dropna().unique().tolist()
-    ).to_dict()
+
+    comptes = pd.read_sql_table("api_clients", engine)
+    # Renommer pour matcher le reste du code
+    comptes = comptes.rename(columns={
+        "client_id": "id_compte",
+        "region": "zone_habituelle",
+    })
+    if "statut_compte" not in comptes.columns:
+        comptes["statut_compte"] = "actif"
+
+    # Appareils : on n'a pas d'info dans api_transactions, on génère un ID par client
+    appareils_par_compte = {
+        cid: [f"dev_{cid}"]
+        for cid in comptes["id_compte"].unique()
+    }
+
     return comptes, appareils_par_compte
 
 
@@ -87,16 +107,27 @@ def generer_une_transaction(rng, comptes_df, appareils_par_compte, id_transactio
     return {
         "id_transaction": f"txn_live_{id_transaction:010d}",
         "id_compte_emetteur": str(id_compte_emetteur),
-        "id_compte_destinataire": destinataire,
+        "id_compte_destinataire_client": str(destinataire) if destinataire else "",
+        "id_compte_emetteur_original": str(id_compte_emetteur),
+        "id_compte_destinataire": str(destinataire),
         "montant": round(montant, 0),
         "horodatage": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "type": type_,
         "canal": canal,
         "zone_geo": zone,
         "id_appareil": str(id_appareil),
-        # PAS de "fraude" ici — c'est justement ce que le consommateur devra prédire
     }
 
+
+def verifier_client_existe(client_id: str, engine) -> bool:
+    """Vérifie que le client existe dans api_clients."""
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        result = conn.execute(
+            text("SELECT 1 FROM api_clients WHERE client_id = :cid LIMIT 1"),
+            {"cid": client_id},
+        ).fetchone()
+        return result is not None
 
 def main():
     parser = argparse.ArgumentParser()

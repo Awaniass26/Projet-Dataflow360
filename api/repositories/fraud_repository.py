@@ -34,6 +34,7 @@ class FraudAlertRepository(Protocol):
         page_size: int = 50,
         risk_level: RiskLevel | None = None,
         status: FraudAlertStatus | None = None,
+        data_origin: str | None = None,
     ) -> tuple[list[FraudAlertResponse], int]:
         ...
 
@@ -80,6 +81,7 @@ class PostgresFraudAlertRepository:
             transaction_id=transaction_id,
             risk_score=risk_score,
             risk_level=risk_level.value,
+            data_origin="kafka",  # ← AJOUT
         )
 
         self._session.add(record)
@@ -115,6 +117,7 @@ class PostgresFraudAlertRepository:
                 type=transaction.transaction_type.value,
                 channel=transaction.channel.value,
                 occurred_at=transaction.occurred_at,
+                data_origin="kafka",     # ← AJOUT
             )
 
             self._session.add(existing_transaction)
