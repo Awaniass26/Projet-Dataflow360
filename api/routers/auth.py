@@ -101,7 +101,7 @@ def create_user_by_admin(
 ) -> UserResponse:
     """Endpoint réservé aux admins pour créer un compte.
 
-    Le compte créé peut avoir le rôle `admin`, `analyst` ou `viewer`.
+    Le compte créé peut avoir le rôle `admin`, `analyst`.
     """
     user = repo.create(
         email=payload.email,

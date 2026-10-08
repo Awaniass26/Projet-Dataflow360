@@ -123,7 +123,7 @@ def migrate_api_schema(engine: Engine) -> None:
                 """
                 ALTER TABLE api_users
                 ADD CONSTRAINT api_users_role_check
-                CHECK (role IN ('admin', 'analyst', 'viewer'))
+                CHECK (role IN ('admin', 'analyst'))
                 """
             )
         )
