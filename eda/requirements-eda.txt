@@ -3,4 +3,4 @@ numpy
 jupyter
 matplotlib
 seaborn
-#scipy
+scipy
