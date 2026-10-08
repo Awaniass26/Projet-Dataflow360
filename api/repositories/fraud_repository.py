@@ -34,6 +34,7 @@ class FraudAlertRepository(Protocol):
         page_size: int = 50,
         risk_level: RiskLevel | None = None,
         status: FraudAlertStatus | None = None,
+        data_origin: str | None = None,
     ) -> tuple[list[FraudAlertResponse], int]:
         ...
 
