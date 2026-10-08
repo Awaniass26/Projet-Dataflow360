@@ -1,7 +1,23 @@
 .venv/
 
 .env
-__pycache__/
+
+**pycache**/
 *.pyc
+
 data/synthetic/*.csv
 data/processed/*.csv
+
+# Datasets locaux
+
+*.csv
+!*.csv.dvc
+
+# MLflow
+
+models/fraude/mlruns/
+models/fraude/mlflow.db
+models/mlflow.db
+
+models/credit/mlruns/
+models/credit/mlflow.db

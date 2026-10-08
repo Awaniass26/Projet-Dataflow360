@@ -4,7 +4,7 @@ src/data/load_postgres.py
 Insère dans PostgreSQL les tables structurées : clients, comptes, credits,
 remboursements, transactions.
 
-Prérequis : docker-compose up -d   (au moins le service postgres)
+Prérequis : PostgreSQL doit être démarré séparément.
 Usage     : python load_postgres.py
 """
 
