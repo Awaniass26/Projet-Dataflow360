@@ -66,16 +66,24 @@ FRAUD_MODEL_CONTRACT = ModelContract(
 
 CREDIT_MODEL_CONTRACT = ModelContract(
     feature_names=(
-        "estimated_monthly_income",
-        "estimated_monthly_expenses",
-        "monthly_transaction_volume",
-        "monthly_transaction_frequency",
-        "requested_amount",
-        "requested_duration_months",
-        "repayment_history_score",
+        "age",
+        "anciennete_compte_mois",
+        "nb_transactions_90j",
+        "montant_entrees_90j",
+        "montant_sorties_90j",
+        "solde_moyen_90j",
+        "regularite_revenus",
+        "nombre_credits_precedents",
+        "taux_remboursement",
+        "nombre_credits_en_retard",
+        "nombre_credits_impayes",
+        "montant_credit_demande",
+        "duree_credit_demande",
+        "stabilite_flux",
+        "type_activite",
     ),
     artifact_format=ModelArtifactFormat.JOBLIB,
     predict_method="predict_proba",
     output_is_probability=True,
-    model_version=None,  # renseigné via CREDIT_MODEL_VERSION dans .env
+    model_version=None,
 )

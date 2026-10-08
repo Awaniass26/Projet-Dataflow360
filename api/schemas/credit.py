@@ -13,22 +13,39 @@ from api.schemas.common import ProcessingStatus, RiskLevel
 
 
 class CreditApplicationInput(BaseModel):
-    """Données d'une demande de micro-crédit à évaluer. PROVISOIRE."""
+    """Données nécessaires au modèle réel de scoring de crédit."""
 
-    application_id: str = Field(..., min_length=1, examples=["credit_app_0001"])
+    application_id: str = Field(
+        ...,
+        min_length=1,
+        examples=["credit_app_0001"],
+    )
     account_id: str = Field(..., min_length=1)
-    requested_amount: float = Field(..., gt=0, description="Montant demandé.")
-    requested_duration_months: int = Field(..., gt=0)
 
-    estimated_monthly_income: float | None = Field(default=None, ge=0)
-    estimated_monthly_expenses: float | None = Field(default=None, ge=0)
-    monthly_transaction_volume: float | None = Field(default=None, ge=0)
-    monthly_transaction_frequency: int | None = Field(default=None, ge=0)
-    repayment_history_score: float | None = Field(
+    # Variables du modèle ML
+    age: int = Field(..., ge=18)
+    anciennete_compte_mois: int = Field(..., ge=0)
+    nb_transactions_90j: int = Field(..., ge=0)
+    montant_entrees_90j: float = Field(..., ge=0)
+    montant_sorties_90j: float = Field(..., ge=0)
+    solde_moyen_90j: float = Field(..., ge=0)
+    regularite_revenus: float = Field(..., ge=0)
+    nombre_credits_precedents: int = Field(..., ge=0)
+    taux_remboursement: float | None = Field(
         default=None,
         ge=0,
         le=1,
-        description="Indicateur agrégé d'historique de remboursement (0 à 1).",
+    )
+    nombre_credits_en_retard: int = Field(..., ge=0)
+    nombre_credits_impayes: int = Field(..., ge=0)
+    montant_credit_demande: float = Field(..., gt=0)
+    duree_credit_demande: int = Field(..., gt=0)
+    stabilite_flux: float = Field(..., ge=0)
+
+    type_activite: str = Field(
+        ...,
+        min_length=1,
+        examples=["commerce"],
     )
 
 
@@ -41,6 +58,10 @@ class CreditScoreResponse(BaseModel):
 
     application_id: str
     risk_score: float | None = Field(default=None, description="Score entre 0 et 1, si disponible.")
+    eligible: bool | None = Field(
+    default=None,
+    description="True si le score atteint le seuil d'approbation de 90 %.",
+)
     risk_level: RiskLevel | None = Field(
         default=None,
         description="Catégorie de risque, uniquement si l'équipe ML en définit une.",
@@ -92,3 +113,4 @@ class CreditStatsResponse(BaseModel):
     average_score: float | None
     average_requested_amount: float | None
     risk_distribution: dict[str, int]
+    validated_clients: int

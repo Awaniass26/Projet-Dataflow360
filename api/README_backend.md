@@ -1,711 +1,505 @@
 # DataFlow360 Backend
 
-DataFlow360 est un projet académique consacré aux risques du mobile money au Sénégal. Le backend fournit une API FastAPI pour l'authentification, la consultation des clients, l'analyse du risque de fraude, la gestion des alertes, le traitement des transactions via Kafka et la consultation des données de crédit.
+DataFlow360 est un projet académique consacré à l'analyse des risques liés au mobile money au Sénégal.
 
-Les données du projet sont synthétiques. Les scores produits par l'API sont des aides à la décision : l'API ne bloque pas une transaction, n'accorde pas un crédit et ne confirme pas juridiquement une fraude.
+Le backend fournit une API **FastAPI** permettant notamment :
+
+* l'authentification des utilisateurs ;
+* la consultation des clients ;
+* l'analyse du risque de fraude ;
+* la gestion et le suivi des alertes fraude ;
+* le scoring de crédit ;
+* la consultation de l'historique des scores ;
+* le calcul de KPI fraude et crédit ;
+* la communication avec PostgreSQL.
+
+Les données utilisées dans le projet sont **synthétiques**.
+
+Les scores produits par les modèles sont des **aides à la décision**. Le backend ne bloque pas automatiquement une transaction, n'accorde pas automatiquement un crédit et ne constitue pas une preuve juridique de fraude.
 
 ---
 
-## 1. Comprendre le backend
+# 1. Architecture générale
 
-### À quoi sert chaque composant ?
-
-* **Frontend React/Vite :** interface utilisée par les personnes qui consultent les clients, les scores, les alertes et les KPI. Il envoie des requêtes HTTP et affiche les réponses JSON.
-
-* **API FastAPI :** point d'entrée HTTP. Elle reçoit les requêtes, valide leur forme et renvoie des réponses JSON.
-
-* **Services métier :** logique de décision du backend. Par exemple, `FraudDetectionService` prépare les features et appelle le modèle fraude.
-
-* **Modèles ML :** composants qui calculent un score à partir de données préparées. L'artefact fraude présent dans le dépôt est `models/fraude/modele_fraude_final.pkl` ; il n'est utilisé que si `FRAUD_MODEL_PATH` le désigne et si son contrat est compatible.
-
-* **PostgreSQL :** stockage durable des clients, transactions, alertes fraude, demandes de crédit et scores de crédit.
-
-* **Repositories :** couche qui traduit les besoins métier en lectures ou écritures PostgreSQL.
-
-Une API n'est pas une interface utilisateur : elle expose des routes. Une base de données conserve les données. Un modèle ML calcule un score. React/Vite présente le résultat à l'utilisateur.
-
-### Parcours général d'une requête
+Le backend suit une architecture séparant les responsabilités :
 
 ```text
-
 Frontend React/Vite
-
-    |
-
-    v
-
+        |
+        | HTTP / JSON
+        v
 API FastAPI
-
-(router + validation Pydantic)
-
-    |
-
-    v
-
-Service métier
-
-    |
-
-    +--> Modèle ML, si une prédiction est nécessaire
-
-    |
-
-    +--> Repository --> PostgreSQL
-
-    \|                   si des données doivent être lues/écrites
-
-    |
-
-    v
-
-Réponse JSON
-
-    |
-
-    v
-
-Frontend React/Vite
-
+        |
+        +--------------------+
+        |                    |
+        v                    v
+   Services métier       Repositories
+        |                    |
+        v                    v
+     Modèles ML          PostgreSQL
 ```
 
-1. React/Vite envoie une requête HTTP.
+### Rôle des composants
 
-2. Le `router` choisit la fonction correspondant à la méthode et au chemin.
+**Frontend React/Vite**
 
-3. Le `schema` valide le JSON reçu ou décrit le JSON retourné.
+Interface utilisée pour consulter les clients, les scores, les alertes et les KPI.
 
-4. Le `service` applique la logique métier.
+Le frontend communique avec l'API via HTTP et ne communique jamais directement avec PostgreSQL.
 
-5. Le service appelle le modèle ML et/ou un `repository`.
+**API FastAPI**
 
-6. Le repository lit ou écrit PostgreSQL lorsque cela est nécessaire.
+Point d'entrée HTTP du backend.
 
-7. FastAPI renvoie une réponse JSON au frontend.
+Elle :
 
-Le frontend n'accède pas directement à PostgreSQL et n'appelle pas directement le fichier `.pkl`.
+* reçoit les requêtes ;
+* valide les données avec Pydantic ;
+* appelle les services ;
+* retourne des réponses JSON ;
+* gère les erreurs applicatives.
+
+**Services métier**
+
+Ils contiennent la logique métier.
+
+Exemples :
+
+* `CreditScoringService`
+* `FraudDetectionService`
+
+Ils sont responsables notamment du chargement et de l'utilisation des modèles ML.
+
+**Repositories**
+
+Couche d'accès aux données PostgreSQL.
+
+Elle permet de séparer la logique métier de la logique SQL/ORM.
+
+**Modèles ML**
+
+Les modèles calculent les scores à partir des données préparées.
+
+**PostgreSQL**
+
+Stockage durable des :
+
+* clients ;
+* transactions ;
+* alertes fraude ;
+* demandes de crédit ;
+* scores de crédit.
 
 ---
 
-## 2. Démarrer l'API en local
+# 2. Parcours d'une requête
 
-### Prérequis
-
-* Docker avec Docker Compose.
-
-* Copier `.env.example` en `.env` pour personnaliser la configuration.
-
-* Le fichier `.env` ne doit pas être commité s'il contient un mot de passe ou une autre valeur sensible.
-
-* L'artefact `models/fraude/modele_fraude_final.pkl` est monté dans le conteneur sous `/app/models`.
-
-Pour demander une prédiction réelle, configurer :
-
-```dotenv
-
-FRAUD_MODEL_PATH=models/fraude/modele_fraude_final.pkl
-
-```
-
-Sans chemin de modèle configuré, garder :
-
-```dotenv
-
-SIMULATION_ENABLED=true
-
-```
-
-pour pouvoir tester les routes en simulation.
-
-### Lancer l'API et les dépendances
-
-Depuis la racine de `DataFlow360` :
-
-```bash
-
-cp .env.example .env
-
-docker compose up --build -d
-
-```
-
-Compose démarre les services nécessaires selon la configuration du projet : PostgreSQL, MongoDB, Redis, API et frontend, ainsi que les composants Kafka lorsqu'ils sont activés. Un service d'initialisation crée les tables API dans PostgreSQL.
-
-### Lancer les tests
-
-```bash
-
-docker compose --profile test run --rm api-tests
-
-```
-
-Les tests sont exécutés dans un conteneur dédié et ne nécessitent pas PostgreSQL réel ni modèle ML réel.
-
-### Consulter les logs
-
-```bash
-
-docker compose logs -f api
-
-```
-
-### Arrêter les services
-
-```bash
-
-docker compose down
-
-```
-
-> `docker compose down` arrête et supprime les conteneurs mais ne supprime pas les volumes persistants PostgreSQL. Ne pas utiliser `docker compose down -v` sauf si la suppression des données est volontaire.
-
-### URLs locales
-
-* API : `http://127.0.0.1:8000`
-
-* Swagger : `http://127.0.0.1:8000/docs`
-
-* ReDoc : `http://127.0.0.1:8000/redoc`
-
-* Healthcheck : `http://127.0.0.1:8000/health`
-
----
-
-## 3. Architecture réelle du dépôt
+Exemple pour le scoring crédit :
 
 ```text
+Frontend
+   |
+   v
+POST /credit/score
+   |
+   v
+Pydantic
+(validation)
+   |
+   v
+CreditScoringService
+   |
+   v
+Modèle ML
+(.pkl)
+   |
+   v
+risk_score
+   |
+   +--> eligible
+   |
+   +--> risk_level
+   |
+   v
+CreditRepository
+   |
+   v
+PostgreSQL
+   |
+   v
+Réponse JSON
+```
 
+Le frontend ne connaît ni le fichier `.pkl`, ni les requêtes SQL.
+
+---
+
+# 3. Structure principale du backend
+
+```text
 api/
-
 ├── main.py
-
 ├── dependencies.py
-
+│
 ├── core/
-
 │   ├── __init__.py
-
 │   ├── config.py
-
 │   ├── error_handlers.py
-
 │   └── exceptions.py
-
+│
 ├── db/
-
 │   ├── __init__.py
-
 │   ├── models.py
-
 │   └── session.py
-
+│
 ├── repositories/
-
 │   ├── client_repository.py
-
 │   ├── credit_repository.py
-
 │   └── fraud_repository.py
-
+│
 ├── routers/
-
 │   ├── __init__.py
-
 │   ├── client.py
-
 │   ├── credit.py
-
 │   └── fraud.py
-
+│
 ├── schemas/
-
 │   ├── client.py
-
 │   ├── common.py
-
 │   ├── credit.py
-
 │   ├── fraud.py
-
 │   └── health.py
-
+│
 ├── scripts/
-
 │   ├── generate.py
-
 │   └── init_db.py
-
+│
 └── services/
-
-├── credit_service.py
-
-├── fraud_service.py
-
-├── ml_contracts.py
-
-└── model_loader.py
+    ├── credit_service.py
+    ├── fraud_service.py
+    ├── ml_contracts.py
+    └── model_loader.py
 
 models/
-
+├── credit/
+│   ├── modele_scoring_credit_final.pkl
+│   └── modele_scoring_mlflow.py
+│
 └── fraude/
-
-├── modele_fraude_final.pkl
-
-├── modele_fraude_mlflow\.py
-
-└── model_scoring.py
+    ├── modele_fraude_final.pkl
+    ├── modele_fraude_mlflow.py
+    └── model_scoring.py
 
 tests/
-
 ├── __init__.py
-
 ├── conftest.py
-
 ├── test_credit.py
-
 ├── test_fraud.py
-
 ├── test_generator.py
-
 ├── test_health.py
-
 └── test_repositories.py
-
 ```
 
-### `api/main.py`
-
-Initialise l'objet FastAPI, configure CORS, enregistre les gestionnaires d'erreurs et inclut les routeurs `fraud`, `credit` et `client`.
-
-Il contient également :
-
-* `GET /`
-
-* `GET /health`
-
-Il ne contient pas la logique du modèle fraude.
-
-### `api/dependencies.py`
-
-Centralise les dépendances FastAPI.
-
-Les dépendances permettent notamment de construire les services, d'ouvrir une session PostgreSQL et de fournir les repositories.
-
-Elles facilitent également les tests grâce à `app.dependency_overrides`.
+> La structure exacte peut évoluer avec le développement du projet.
 
 ---
 
-## 4. Variables d'environnement
+# 4. Démarrer le backend
 
-| Variable                   | Rôle                           | Exemple                                       | Obligatoire ?                      |
+## Prérequis
 
-| -------------------------- | ------------------------------ | --------------------------------------------- | ---------------------------------- |
+* Docker
+* Docker Compose
+* Git
 
-| `APP_NAME`                 | Nom de l'API                   | `DataFlow360 API`                             | Non                                |
+Créer la configuration locale :
 
-| `APP_VERSION`              | Version exposée                | `0.1.0`                                       | Non                                |
+```bash
+cp .env.example .env
+```
 
-| `APP_DESCRIPTION`          | Description OpenAPI            | `DataFlow360 backend`                         | Non                                |
+Puis lancer la stack :
 
-| `ENVIRONMENT`              | Environnement                  | `development`                                 | Non                                |
+```bash
+docker compose up --build -d
+```
 
-| `CORS_ALLOWED_ORIGINS`     | Origines frontend autorisées   | `http://localhost:5173,http://127.0.0.1:5173` | Non                                |
+Vérifier les conteneurs :
 
-| `SIMULATION_ENABLED`       | Autorise les réponses simulées | `true`                                        | Non                                |
+```bash
+docker compose ps
+```
 
-| `DATABASE_URL`             | Connexion PostgreSQL           | `postgresql+psycopg://...`                    | Requise pour les routes DB         |
+Consulter les logs de l'API :
 
-| `FRAUD_MODEL_PATH`         | Chemin du modèle fraude        | `models/fraude/modele_fraude_final.pkl`       | Requise pour une prédiction réelle |
+```bash
+docker compose logs -f api
+```
 
-| `FRAUD_MODEL_VERSION`      | Version descriptive du modèle  | `1.0.0`                                       | Non                                |
+Arrêter la stack :
 
-| `FRAUD_DECISION_THRESHOLD` | Seuil de décision fraude       | `0.5`                                         | Non                                |
+```bash
+docker compose down
+```
 
-| `CREDIT_MODEL_PATH`        | Chemin futur modèle crédit     | vide                                          | Non                                |
+> `docker compose down` ne supprime pas les volumes persistants PostgreSQL.
 
-| `CREDIT_MODEL_VERSION`     | Version futur modèle crédit    | `0.1.0`                                       | Non                                |
+Pour supprimer volontairement les volumes :
 
-Le fichier `.env.example` constitue la référence de configuration fournie au dépôt.
-
-Le fichier `.env` local peut contenir les vrais accès PostgreSQL et doit rester privé.
+```bash
+docker compose down -v
+```
 
 ---
 
-# 5. Contrat HTTP
+# 5. URLs locales
 
-## Format commun des erreurs
+API :
 
-Les erreurs applicatives suivent ce format :
+```text
+http://127.0.0.1:8000
+```
+
+Swagger :
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+ReDoc :
+
+```text
+http://127.0.0.1:8000/redoc
+```
+
+Healthcheck :
+
+```text
+http://127.0.0.1:8000/health
+```
+
+---
+
+# 6. Variables d'environnement
+
+| Variable                   | Rôle                         | Exemple                                              |
+| -------------------------- | ---------------------------- | ---------------------------------------------------- |
+| `APP_NAME`                 | Nom de l'API                 | `DataFlow360 API`                                    |
+| `APP_VERSION`              | Version de l'API             | `0.1.0`                                              |
+| `APP_DESCRIPTION`          | Description OpenAPI          | `DataFlow360 backend`                                |
+| `ENVIRONMENT`              | Environnement                | `development`                                        |
+| `CORS_ALLOWED_ORIGINS`     | Origines frontend autorisées | `http://localhost:5173`                              |
+| `SIMULATION_ENABLED`       | Autorise la simulation       | `true`                                               |
+| `DATABASE_URL`             | Connexion PostgreSQL         | `postgresql+psycopg://...`                           |
+| `FRAUD_MODEL_PATH`         | Chemin du modèle fraude      | `/app/models/fraude/modele_fraude_final.pkl`         |
+| `FRAUD_MODEL_VERSION`      | Version du modèle fraude     | `1.0.0`                                              |
+| `FRAUD_DECISION_THRESHOLD` | Seuil fraude                 | `0.5`                                                |
+| `CREDIT_MODEL_PATH`        | Chemin du modèle crédit      | `/app/models/credit/modele_scoring_credit_final.pkl` |
+| `CREDIT_MODEL_VERSION`     | Version du modèle crédit     | `0.1.0`                                              |
+
+Le fichier `.env` contient la configuration locale et ne doit pas être commité s'il contient des informations sensibles.
+
+---
+
+# 7. Authentification
+
+Le backend utilise une authentification **JWT Bearer**.
+
+## Endpoints
+
+| Méthode | URL           | Accès       | Fonction                       |
+| ------- | ------------- | ----------- | ------------------------------ |
+| `POST`  | `/auth/login` | Public      | Connexion et génération du JWT |
+| `GET`   | `/auth/me`    | Authentifié | Utilisateur connecté           |
+| `GET`   | `/auth/users` | Admin       | Liste des utilisateurs         |
+| `POST`  | `/auth/users` | Admin       | Création d'un utilisateur      |
+
+L'ancien endpoint `/auth/register` n'est plus exposé.
+
+## Connexion
+
+Exemple de requête :
 
 ```json
-
 {
-
-"error": {
-
-"code": "validation_error",
-
-"message": "La requête contient des données invalides.",
-
-"details": [
-
-  {
-
-    "field": "amount",
-
-    "message": "Input should be greater than 0",
-
-    "type": "greater_than"
-
-  }
-
-]
-
+  "email": "admin@dataflow360.local",
+  "password": "********"
 }
-
-}
-
 ```
 
-Codes principaux :
+La connexion retourne un token JWT.
 
-* `validation_error` — `422`
+Pour accéder à une route protégée :
 
-* `resource_not_found` — `404`
+```text
+Authorization: Bearer <access_token>
+```
 
-* `model_not_configured` — `503`
+Le backend distingue notamment les rôles :
 
-* `model_load_error` — `503`
+* `admin`
+* `analyst`
 
-* `model_prediction_error` — `500`
-
-* `database_not_configured` — `503`
-
-* `database_error` — `503`
-
-* `not_found` — `404`
-
-* `method_not_allowed` — `405`
-
-* `internal_error` — `500`
+Les identifiants de démonstration sont réservés à l'environnement académique/local.
 
 ---
 
-**---
+# 8. Contrat HTTP
 
-6. Authentification et autorisation
+## Format des erreurs
 
-Le backend utilise une authentification JWT Bearer pour protéger les routes sensibles.
+Les erreurs applicatives suivent le format :
 
-Endpoints d'authentification
-
-Méthode
-
-URL
-
-Accès
-
-Fonction
-
-POST
-
-/auth/login
-
-Public
-
-Connexion et génération d'un token JWT
-
-GET
-
-/auth/me
-
-Authentifié
-
-Retourne l'utilisateur connecté
-
-GET
-
-/auth/users
-
-Admin
-
-Liste les utilisateurs
-
-POST
-
-/auth/users
-
-Admin
-
-Crée un utilisateur
-
-L'ancien endpoint /auth/register n'est plus exposé.
-
-Connexion
-
-Exemple :
-
+```json
 {
-  "email": "admin@dataflow360.local",
-  "password": "admin123"
+  "error": {
+    "code": "validation_error",
+    "message": "La requête contient des données invalides.",
+    "details": [
+      {
+        "field": "amount",
+        "message": "Input should be greater than 0",
+        "type": "greater_than"
+      }
+    ]
+  }
 }
+```
 
-La connexion retourne un token d'accès JWT.
+## Principaux codes
 
-Pour les routes protégées, le token doit être envoyé dans :
+| Code                      | HTTP | Signification                   |
+| ------------------------- | ---: | ------------------------------- |
+| `validation_error`        |  422 | Données invalides               |
+| `resource_not_found`      |  404 | Ressource inexistante           |
+| `model_not_configured`    |  503 | Modèle non configuré            |
+| `model_load_error`        |  503 | Impossible de charger le modèle |
+| `model_prediction_error`  |  500 | Erreur lors de la prédiction    |
+| `database_not_configured` |  503 | PostgreSQL non configuré        |
+| `database_error`          |  503 | Erreur base de données          |
+| `not_found`               |  404 | Route ou ressource inexistante  |
+| `method_not_allowed`      |  405 | Méthode HTTP non autorisée      |
+| `internal_error`          |  500 | Erreur interne                  |
 
-Authorization: Bearer <access_token>
+---
 
-Le backend distingue notamment les rôles admin et analyst.
-
-Les identifiants de démonstration sont réservés à l'environnement académique/local et ne doivent pas être utilisés tels quels en production.
-
-7. Détection de fraude**
+# 9. Détection de fraude
 
 ## `POST /fraud/predict`
 
-Évalue le risque d'une transaction.
+Cette route évalue le risque associé à une transaction.
 
-La route :
+Le traitement est :
 
-1. valide le JSON avec `TransactionInput` ;
-
-2. vérifie la configuration du modèle ;
-
-3. utilise le mode simulation si aucun modèle n'est configuré et que la simulation est autorisée ;
-
-4. sinon charge le modèle fraude ;
-
-5. prépare les huit features ;
-
-6. appelle `predict_proba` ;
-
-7. calcule le `risk_score` ;
-
-8. détermine éventuellement le `risk_level` ;
-
-9. persiste uniquement une prédiction réelle classée `high`.
+1. validation de la requête ;
+2. vérification de la configuration du modèle ;
+3. utilisation éventuelle du mode simulation ;
+4. chargement du modèle fraude ;
+5. préparation des features ;
+6. appel de `predict_proba` ;
+7. calcul du `risk_score` ;
+8. détermination du `risk_level` ;
+9. persistance éventuelle de l'alerte.
 
 Une prédiction simulée ne crée aucune alerte.
 
-Une prédiction réelle `low` ou `medium` retourne le score mais ne crée pas d'alerte.
+Une prédiction réelle de niveau `high` peut entraîner la création d'une alerte persistée dans PostgreSQL.
 
-Une prédiction réelle `high` tente de persister la transaction et l'alerte.
+Une alerte reste une **alerte de risque**, et non une preuve juridique de fraude.
 
-### Réponse simulée
-
-```json
-
-{
-
-"transaction_id": "txn_demo_001",
-
-"risk_score": null,
-
-"risk_level": null,
-
-"status": "simulated",
-
-"is_simulation": true,
-
-"message": "SIMULATION : aucun modèle de détection de fraude n'est encore branché."
-
-}
-
-```
-
-### Réponse réelle
+## Réponse simulée
 
 ```json
-
 {
-
-"transaction_id": "txn_demo_001",
-
-"risk_score": 0.91,
-
-"risk_level": "high",
-
-"status": "completed",
-
-"is_simulation": false,
-
-"message": "Score de risque calculé par le modèle de détection de fraude."
-
+  "transaction_id": "txn_demo_001",
+  "risk_score": null,
+  "risk_level": null,
+  "status": "simulated",
+  "is_simulation": true,
+  "message": "SIMULATION : aucun modèle de détection de fraude n'est encore branché."
 }
-
 ```
 
-> `risk_score` est une estimation du modèle et ne constitue pas une preuve de fraude.
+## Réponse réelle
+
+```json
+{
+  "transaction_id": "txn_demo_001",
+  "risk_score": 0.91,
+  "risk_level": "high",
+  "status": "completed",
+  "is_simulation": false,
+  "message": "Score de risque calculé par le modèle de détection de fraude."
+}
+```
 
 ---
 
-# 8. Gestion des alertes fraude
+# 10. Alertes fraude
 
-Les alertes représentent les résultats de fraude **réellement persistés** dans PostgreSQL.
+Les alertes représentent les risques fraude réellement persistés dans PostgreSQL.
 
-Une alerte contient désormais :
+Une alerte contient notamment :
 
 ```text
-
 alert_id
-
 transaction_id
-
 risk_score
-
 risk_level
-
 status
-
 explanation
-
 reviewed_at
-
 reviewed_by
-
 created_at
-
 ```
 
-### Statuts possibles
+## Statuts
 
 | Statut      | Signification                        |
-
 | ----------- | ------------------------------------ |
-
 | `pending`   | Alerte créée mais pas encore traitée |
-
 | `reviewed`  | Alerte examinée                      |
-
 | `confirmed` | Suspicion confirmée par l'analyste   |
-
 | `dismissed` | Alerte écartée après analyse         |
 
-Le statut est un élément de suivi humain : le backend ne prétend pas déterminer juridiquement qu'une fraude a eu lieu.
+Le statut correspond au **suivi humain** de l'alerte.
 
 ---
 
 ## `GET /fraud/alerts`
 
-Liste les alertes avec pagination et filtres optionnels.
+Liste les alertes avec pagination et filtres.
 
-### Paramètres
+Paramètres :
 
-| Paramètre    | Type   | Défaut | Règles                                          |
+| Paramètre    | Type   | Défaut |
+| ------------ | ------ | -----: |
+| `page`       | entier |    `1` |
+| `page_size`  | entier |   `50` |
+| `risk_level` | enum   |  aucun |
+| `status`     | enum   |  aucun |
 
-| ------------ | ------ | -----: | ----------------------------------------------- |
-
-| `page`       | entier |    `1` | ≥ 1                                             |
-
-| `page_size`  | entier |   `50` | entre `1` et `100`                              |
-
-| `risk_level` | enum   |  aucun | `low`, `medium`, `high`                         |
-
-| `status`     | enum   |  aucun | `pending`, `reviewed`, `confirmed`, `dismissed` |
-
-### Exemples
-
-Toutes les alertes :
+Exemple :
 
 ```text
-
-GET /fraud/alerts
-
-```
-
-Première page de 20 alertes :
-
-```text
-
 GET /fraud/alerts?page=1&page_size=20
-
 ```
 
-Alertes `high` :
+Filtre :
 
 ```text
-
 GET /fraud/alerts?risk_level=high
-
 ```
 
-Alertes en attente :
+Ou :
 
 ```text
-
-GET /fraud/alerts?status=pending
-
-```
-
-Alertes `high` encore en attente :
-
-```text
-
 GET /fraud/alerts?risk_level=high&status=pending
-
 ```
-
-### Réponse
-
-```json
-
-{
-
-"items": [
-
-{
-
-  "alert_id": 816,
-
-  "transaction_id": "txn_test_awa_suspect_001",
-
-  "risk_score": 1.0,
-
-  "risk_level": "high",
-
-  "status": "confirmed",
-
-  "explanation": "Transaction inhabituelle confirmée après vérification.",
-
-  "reviewed_at": "2026-10-05T12:31:13.069721Z",
-
-  "reviewed_by": "analyst_01",
-
-  "created_at": "2026-10-04T18:25:53.500753Z"
-
-}
-
-],
-
-"page": 1,
-
-"page_size": 20,
-
-"total": 1,
-
-"total_pages": 1
-
-}
-
-```
-
-### Champs de la réponse
-
-| Champ         | Signification                                    |
-
-| ------------- | ------------------------------------------------ |
-
-| `items`       | Alertes de la page actuelle                      |
-
-| `page`        | Numéro de page                                   |
-
-| `page_size`   | Nombre demandé par page                          |
-
-| `total`       | Nombre total d'alertes correspondant aux filtres |
-
-| `total_pages` | Nombre total de pages                            |
 
 ---
+
+# 11. Détail et traitement d'une alerte
 
 ## `GET /fraud/alerts/{alert_id}`
 
@@ -714,853 +508,642 @@ Retourne le détail d'une alerte.
 Exemple :
 
 ```text
-
 GET /fraud/alerts/816
-
 ```
-
-Réponse :
-
-```json
-
-{
-
-"alert_id": 816,
-
-"transaction_id": "txn_test_awa_suspect_001",
-
-"risk_score": 1.0,
-
-"risk_level": "high",
-
-"status": "confirmed",
-
-"explanation": "Transaction inhabituelle confirmée après vérification.",
-
-"reviewed_at": "2026-10-05T12:31:13.069721Z",
-
-"reviewed_by": "analyst_01",
-
-"created_at": "2026-10-04T18:25:53.500753Z"
-
-}
-
-```
-
-Si l'alerte n'existe pas :
-
-```json
-
-{
-
-"error": {
-
-"code": "resource_not_found",
-
-"message": "Aucune alerte trouvée pour '999'."
-
-}
-
-}
-
-```
-
----
 
 ## `PATCH /fraud/alerts/{alert_id}`
 
 Permet à un analyste de mettre à jour le traitement d'une alerte.
 
-### Corps de la requête
+Exemple :
 
 ```json
-
 {
-
-"status": "confirmed",
-
-"reviewed_by": "analyst_01",
-
-"explanation": "Transaction inhabituelle confirmée après vérification."
-
+  "status": "confirmed",
+  "reviewed_by": "analyst_01",
+  "explanation": "Transaction inhabituelle confirmée après vérification."
 }
-
 ```
-
-### Champs
-
-| Champ         | Type             | Obligatoire | Description                                     |
-
-| ------------- | ---------------- | ----------- | ----------------------------------------------- |
-
-| `status`      | enum             | Oui         | `pending`, `reviewed`, `confirmed`, `dismissed` |
-
-| `reviewed_by` | chaîne           | Oui         | Identifiant de l'analyste                       |
-
-| `explanation` | chaîne ou `null` | Non         | Explication du traitement                       |
 
 Lors de la mise à jour :
 
-* `status` est modifié ;
-
-* `reviewed_by` est enregistré ;
-
-* `reviewed_at` est renseigné automatiquement avec l'heure UTC ;
-
-* `explanation` est enregistrée.
-
-Exemple :
-
-```text
-
-PATCH /fraud/alerts/816
-
-```
-
-```json
-
-{
-
-"status": "confirmed",
-
-"reviewed_by": "analyst_01",
-
-"explanation": "Transaction inhabituelle confirmée après vérification."
-
-}
-
-```
+* le statut est modifié ;
+* l'analyste est enregistré ;
+* `reviewed_at` est renseigné ;
+* l'explication est enregistrée.
 
 ---
 
-# 9. Statistiques fraude
+# 12. Statistiques fraude
 
 ## `GET /fraud/stats`
 
-Retourne les KPI calculés directement depuis PostgreSQL.
+Retourne les KPI calculés depuis PostgreSQL.
 
-### Réponse
+Les principaux indicateurs sont :
 
-```json
+| Champ                  | Signification                     |
+| ---------------------- | --------------------------------- |
+| `total_transactions`   | Nombre total de transactions      |
+| `total_alerts`         | Nombre total d'alertes            |
+| `suspicious_rate`      | Taux d'alertes                    |
+| `suspicious_amount`    | Montant total associé aux alertes |
+| `alerts_by_status`     | Répartition par statut            |
+| `alerts_by_risk_level` | Répartition par niveau            |
+| `alerts_evolution`     | Évolution quotidienne             |
 
-{
-
-"total_transactions": 10062,
-
-"total_alerts": 816,
-
-"suspicious_rate": 0.08109719737626714,
-
-"suspicious_amount": 202202853.68000022,
-
-"alerts_by_status": {
-
-"pending": 815,
-
-"reviewed": 0,
-
-"confirmed": 1,
-
-"dismissed": 0
-
-},
-
-"alerts_by_risk_level": {
-
-"low": 0,
-
-"medium": 522,
-
-"high": 294
-
-},
-
-"alerts_evolution": [
-
-{
-
-  "date": "2026-10-04",
-
-  "alert_count": 1,
-
-  "suspicious_amount": 10000.0
-
-}
-
-]
-
-}
-
-```
-
-Les valeurs ci-dessus correspondent à un état de démonstration du jeu de données et peuvent évoluer.
-
-### Indicateurs
-
-| Champ                  | Signification                                         |
-
-| ---------------------- | ----------------------------------------------------- |
-
-| `total_transactions`   | Nombre total de transactions                          |
-
-| `total_alerts`         | Nombre total d'alertes                                |
-
-| `suspicious_rate`      | `total_alerts / total_transactions`                   |
-
-| `suspicious_amount`    | Somme des montants des transactions liées aux alertes |
-
-| `alerts_by_status`     | Nombre d'alertes par statut                           |
-
-| `alerts_by_risk_level` | Nombre d'alertes par niveau                           |
-
-| `alerts_evolution`     | Évolution quotidienne des alertes                     |
-
-### Distribution des statuts
-
-```json
-
-{
-
-"pending": 815,
-
-"reviewed": 0,
-
-"confirmed": 1,
-
-"dismissed": 0
-
-}
-
-```
-
-### Distribution des niveaux
-
-```json
-
-{
-
-"low": 0,
-
-"medium": 522,
-
-"high": 294
-
-}
-
-```
-
-Le nombre d'alertes par statut et le nombre d'alertes par niveau doivent chacun totaliser `total_alerts`.
+Les données retournées peuvent évoluer selon le contenu de PostgreSQL.
 
 ---
 
-# 10. Gestion des clients
+# 13. Gestion des clients
 
 ## `GET /clients`
 
 Liste les clients.
 
+Exemple :
+
 ```text
-
 GET /clients?limit=50
-
 ```
 
 `limit` est compris entre `1` et `100`.
 
 ## `GET /clients/{client_id}`
 
-Retourne un client ainsi que :
-
-* ses informations ;
+Retourne les informations d'un client ainsi que :
 
 * ses transactions ;
-
 * ses demandes de crédit.
 
 Les alertes fraude ne sont pas directement incluses dans cette réponse.
 
 ---
 
-# 11. Crédit
+# 14. Scoring crédit
 
-Le modèle de scoring crédit n'est pas encore prêt ni validé pour un usage réel.
+Le scoring crédit est désormais connecté au **vrai modèle ML** présent dans le dépôt.
 
-Les routes de consultation PostgreSQL existent, mais `POST /credit/score` reste en simulation avec la configuration actuelle.
+Modèle :
 
-## `POST /credit/score`
-
-Avec le modèle absent et la simulation activée :
-
-```json
-
-{
-
-"application_id": "credit_app_0001",
-
-"risk_score": null,
-
-"risk_level": null,
-
-"status": "simulated",
-
-"is_simulation": true,
-
-"message": "SIMULATION : aucun modèle de scoring de crédit n'est encore branché."
-
-}
-
+```text
+models/credit/modele_scoring_credit_final.pkl
 ```
 
-Il ne faut donc pas présenter cette réponse comme un véritable score ML.
+Le modèle est un pipeline `imblearn` sauvegardé avec `joblib`.
 
-Les routes de consultation disponibles sont :
+Il utilise `predict_proba`.
 
-* `GET /credit/score/{application_id}`
+## Features utilisées
 
-* `GET /credit/applications`
+Le modèle utilise les 15 variables suivantes :
 
-* `GET /credit/applications/{application_id}`
+```text
+age
+anciennete_compte_mois
+nb_transactions_90j
+montant_entrees_90j
+montant_sorties_90j
+solde_moyen_90j
+regularite_revenus
+nombre_credits_precedents
+taux_remboursement
+nombre_credits_en_retard
+nombre_credits_impayes
+montant_credit_demande
+duree_credit_demande
+stabilite_flux
+type_activite
+```
 
-* `GET /credit/stats`
+## Interprétation actuelle
+
+La classe `1` correspond à un client **éligible**.
+
+Le backend récupère :
+
+```python
+predict_proba(...)[0][1]
+```
+
+Ce résultat est utilisé comme `risk_score` dans l'API.
+
+Le seuil métier actuellement configuré est :
+
+```text
+0.90
+```
+
+Ainsi :
+
+```text
+score >= 0.90  -> eligible = true
+score < 0.90   -> eligible = false
+```
+
+Le seuil de 90 % doit rester considéré comme une règle métier à confirmer par l'équipe Data Science.
+
+Le modèle fournit une aide à la décision et ne constitue pas une décision automatique d'octroi de crédit.
 
 ---
 
-**---
+# 15. `POST /credit/score`
 
-12. Kafka et traitement des transactions
+Cette route reçoit les caractéristiques d'une demande de crédit et calcule le score.
 
-Le projet intègre Apache Kafka pour le transport des transactions vers le composant de détection de fraude.
+Exemple :
 
-Transaction
-    |
-    v
-Kafka Producer
-    |
-    v
-Topic : transactions
-    |
-    v
-Fraud Consumer
-    |
-    v
-Détection de fraude
-
-Composants :
-
-api/messaging/
-├── kafka_producer.py
-└── kafka_consumer.py
-
-Le producer publie les transactions sur le topic transactions.
-
-Le consumer utilise le groupe :
-
-fraud-detection
-
-Le consumer peut être lancé séparément :
-
-python -m api.messaging.kafka_consumer
-
-Le mode simulation ne doit pas être présenté comme une détection ML réelle. La persistance des alertes dépend du fonctionnement de la détection réelle et de la configuration du modèle.
-
-13. Base PostgreSQL et relations**
-
-```text
-
-Client (clients)
-
-|
-
-+--> Transaction (transactions)
-
-|       |
-
-|       +--> FraudAlert (fraud_alerts, relation 0..1)
-
-|
-
-+--> CreditApplication (credit_applications)
-
-      |
-
-      +--> CreditScore (credit_scores, relation 0..1)
-
+```json
+{
+  "application_id": "APP-00000001",
+  "account_id": "CLI-000001",
+  "age": 35,
+  "anciennete_compte_mois": 36,
+  "nb_transactions_90j": 50,
+  "montant_entrees_90j": 1500000,
+  "montant_sorties_90j": 600000,
+  "solde_moyen_90j": 500000,
+  "regularite_revenus": 0.9,
+  "nombre_credits_precedents": 2,
+  "taux_remboursement": 0.95,
+  "nombre_credits_en_retard": 0,
+  "nombre_credits_impayes": 0,
+  "montant_credit_demande": 200000,
+  "duree_credit_demande": 6,
+  "stabilite_flux": 0.9,
+  "type_activite": "commerce"
+}
 ```
 
-### `clients`
+Exemple de réponse réelle :
+
+```json
+{
+  "application_id": "APP-00000001",
+  "risk_score": 0.0154,
+  "eligible": false,
+  "risk_level": "high",
+  "status": "completed",
+  "is_simulation": false,
+  "message": "Score de risque calculé par le modèle de scoring de crédit. Seuil d'approbation : 90%.",
+  "explanation_factors": null
+}
+```
+
+`is_simulation: false` indique que le vrai modèle a été utilisé.
+
+---
+
+# 16. Historique des scores crédit
+
+Une demande de crédit peut avoir plusieurs scores enregistrés.
+
+Cela permet de conserver un historique des prédictions.
+
+```text
+CreditApplication
+        |
+        +---- CreditScore
+        |
+        +---- CreditScore
+        |
+        +---- CreditScore
+```
+
+Lors de la consultation d'une demande, le backend utilise **le dernier score** enregistré.
+
+Le dernier score est déterminé à partir de :
+
+1. `created_at` décroissant ;
+2. puis `id` décroissant en cas d'égalité.
+
+Cela évite les doublons dans les listes et les erreurs `MultipleResultsFound`.
+
+---
+
+# 17. Endpoints crédit
+
+## `GET /credit/score/{application_id}`
+
+Retourne le dernier score enregistré pour une demande.
+
+## `GET /credit/applications`
+
+Retourne la liste des demandes de crédit avec leur dernier score.
+
+## `GET /credit/applications/{application_id}`
+
+Retourne le détail d'une demande avec son dernier score.
+
+## `GET /credit/stats`
+
+Retourne les KPI crédit.
+
+Exemple de structure :
+
+```json
+{
+  "total_applications": 783,
+  "average_score": 0.5126,
+  "average_requested_amount": 986178.06,
+  "risk_distribution": {
+    "low": 96,
+    "medium": 563,
+    "high": 124
+  },
+  "validated_clients": 0
+}
+```
+
+`validated_clients` correspond au nombre de clients distincts dont le dernier score atteint le seuil d'approbation configuré.
+
+Dans l'état actuel des données, le meilleur score observé est inférieur à `0.90`, donc :
+
+```text
+validated_clients = 0
+```
+
+Cette valeur n'est pas une erreur.
+
+---
+
+# 18. Explicabilité du scoring crédit
+
+Le champ :
+
+```text
+explanation_factors
+```
+
+est actuellement prévu dans la réponse API mais n'est pas encore alimenté par une méthode d'explicabilité réelle.
+
+Il vaut actuellement :
+
+```json
+"explanation_factors": null
+```
+
+Aucun facteur ne doit être inventé à partir des seules valeurs d'entrée.
+
+Une prochaine étape pourra utiliser une méthode telle que **SHAP**, à condition qu'elle soit réellement intégrée au modèle et validée par l'équipe Data Science.
+
+---
+
+# 19. PostgreSQL
+
+Les principales entités sont :
+
+```text
+Client
+ |
+ +--> Transaction
+ |       |
+ |       +--> FraudAlert
+ |
+ +--> CreditApplication
+         |
+         +--> CreditScore
+```
+
+## Clients
 
 Informations synthétiques des clients.
 
-### `transactions`
+## Transactions
 
-Transactions mobile money liées aux clients.
+Transactions mobile money associées aux clients.
 
-### `fraud_alerts`
+## FraudAlert
 
-Alertes fraude persistées.
+Alertes liées aux transactions à risque.
 
-Une transaction ne peut avoir qu'une seule alerte grâce à la contrainte unique sur `transaction_id`.
+Une transaction ne peut avoir qu'une seule alerte grâce à la contrainte d'unicité sur `transaction_id`.
 
-Une alerte contient notamment :
-
-```text
-
-alert_id
-
-transaction_id
-
-risk_score
-
-risk_level
-
-status
-
-explanation
-
-reviewed_at
-
-reviewed_by
-
-created_at
-
-```
-
-### `credit_applications`
+## CreditApplication
 
 Demandes de crédit.
 
-### `credit_scores`
+## CreditScore
 
-Scores associés aux demandes de crédit.
+Scores associés aux demandes.
+
+Une demande peut avoir plusieurs scores afin de conserver l'historique.
 
 ---
 
-# 14. Génération des données
+# 20. Génération des données
 
-`api/scripts/generate.py` génère des données PostgreSQL synthétiques.
-
-Il remplit notamment :
+Le script :
 
 ```text
-
-clients
-
-transactions
-
-fraud_alerts
-
-credit_applications
-
-credit_scores
-
+api/scripts/generate.py
 ```
 
-Le script n'est **pas exécuté automatiquement** au démarrage.
+génère les données synthétiques PostgreSQL.
+
+Il peut remplir notamment :
+
+```text
+clients
+transactions
+fraud_alerts
+credit_applications
+credit_scores
+```
+
+Le script n'est pas exécuté automatiquement à chaque démarrage.
 
 Pour le lancer :
 
 ```bash
-
 docker compose exec api python -m api.scripts.generate
-
 ```
 
-> Attention : chaque exécution vide les cinq tables avant de les remplir à nouveau.
+> Attention : le générateur réinitialise les données concernées avant de les remplir à nouveau.
 
-`api/scripts/init_db.py`, utilisé par Compose, crée uniquement le schéma nécessaire et ne génère aucune donnée.
+Le script :
+
+```text
+api/scripts/init_db.py
+```
+
+est utilisé pour initialiser le schéma de la base.
+
+Il ne génère pas les données métier.
 
 ---
 
-# 15. Tests
+# 21. Tests
 
-Les tests sont exécutés avec :
+Les tests peuvent être lancés avec :
 
 ```bash
-
 docker compose --profile test run --rm api-tests
-
 ```
 
-La suite couvre actuellement les principales fonctionnalités du backend.
+La suite couvre notamment :
 
-### `tests/test_health.py`
-
-Teste notamment :
+### `test_health.py`
 
 * `GET /`
-
 * `GET /health`
-
 * routes inconnues.
 
-### `tests/test_fraud.py`
+### `test_fraud.py`
 
-Teste notamment :
-
-* prédiction en simulation ;
-
-* validation des entrées ;
-
-* montant négatif ;
-
-* absence de modèle ;
-
-* liste des alertes ;
-
-* détail d'une alerte ;
-
-* alerte inexistante ;
-
-* statistiques fraude ;
-
-* statuts et niveaux d'alerte.
-
-### `tests/test_credit.py`
-
-Teste :
-
-* simulation crédit ;
-
+* simulation fraude ;
 * validation ;
+* montants invalides ;
+* absence de modèle ;
+* prédiction ;
+* alertes ;
+* filtres ;
+* détail d'une alerte ;
+* mise à jour ;
+* statistiques.
 
+### `test_credit.py`
+
+* simulation ;
+* validation des données ;
+* scoring ;
 * identifiants inconnus.
 
-### `tests/test_repositories.py`
+### `test_repositories.py`
 
-Teste notamment :
-
-* persistance idempotente des alertes fraude ;
-
+* persistance ;
 * agrégats fraude ;
-
 * agrégats crédit ;
+* gestion des derniers scores ;
+* repositories avec base SQLite isolée.
 
-* repositories avec une base SQLite isolée.
+### `test_generator.py`
 
-### `tests/test_generator.py`
+Vérifie le comportement du générateur de données.
 
-Vérifie que deux générations successives en mémoire produisent les mêmes données.
-
-### Résultat attendu
-
-La suite actuelle contient **24 tests**.
-
-Après la mise à jour des fixtures de `tests/test_fraud.py`, la commande :
-
-```bash
-
-docker compose --profile test run --rm api-tests
-
-```
-
-doit terminer avec :
-
-```text
-
-24 passed
-
-```
-
-Un warning éventuel concernant la compatibilité `httpx`/`Starlette TestClient` n'est pas un échec de test.
+> Le nombre exact de tests doit être mis à jour lorsque la suite évolue. Le README ne doit pas annoncer un nombre de tests qui n'a pas été vérifié récemment.
 
 ---
 
-# 16. Tester avec Swagger
+# 22. Tester avec Swagger
 
-1. Démarrer la stack :
+Démarrer la stack :
 
 ```bash
-
 docker compose up --build -d
-
 ```
 
-2. Ouvrir :
+Ouvrir :
 
 ```text
-
 http://127.0.0.1:8000/docs
-
 ```
 
-3. Développer les groupes :
+Puis :
 
-```text
+1. développer le groupe souhaité ;
+2. cliquer sur **Try it out** ;
+3. renseigner les paramètres ;
+4. cliquer sur **Execute** ;
+5. vérifier le code HTTP ;
+6. vérifier la réponse JSON.
 
-Fraud
-
-Credit
-
-Client
-
-```
-
-4. Cliquer sur **Try it out**.
-
-5. Renseigner les paramètres ou le JSON.
-
-6. Cliquer sur **Execute**.
-
-Pour tester les routes PostgreSQL avec des données synthétiques :
+Pour générer les données synthétiques :
 
 ```bash
-
 docker compose exec api python -m api.scripts.generate
-
 ```
-
-> Ce script remplace les données des cinq tables de démonstration.
-
-Avec la configuration par défaut, `/fraud/predict` fonctionne en simulation si `SIMULATION_ENABLED=true`.
-
-Dans ce cas :
-
-```text
-
-risk_score = null
-
-risk_level = null
-
-is_simulation = true
-
-```
-
-et aucune alerte n'est créée.
 
 ---
 
-# 17. Parcours complet d'une alerte fraude
+# 23. Frontend React/Vite
+
+Le frontend se trouve dans :
 
 ```text
-
-Transaction
-
- |
-
- v
-
-POST /fraud/predict
-
- |
-
- +---- Simulation ?
-
- \|       |
-
- \|       +--> Oui --> réponse simulée
-
- \|                    aucune alerte
-
- |
-
- +---- Modèle réel
-
-         |
-
-         v
-
-    risk_score
-
-         |
-
-         v
-
-    risk_level
-
-         |
-
-   +-----+-----+
-
-   \|           |
-
- low/medium   high
-
-   \|           |
-
-   \|           v
-
-   \|      PostgreSQL
-
-   \|           |
-
-   \|           v
-
-   \|      FraudAlert
-
-   \|           |
-
-   +-----------+
-
-               |
-
-               v
-
-      GET /fraud/alerts
-
-               |
-
-               v
-
-      GET /fraud/alerts/{id}
-
-               |
-
-               v
-
-      PATCH /fraud/alerts/{id}
-
-               |
-
-               v
-
-         Statut traité
-
-```
-
-Le backend fournit donc deux niveaux distincts :
-
-1. **Évaluation automatique du risque** par le modèle fraude.
-
-2. **Traitement humain de l'alerte** avec statut, explication, analyste et date de revue.
-
-Le backend ne transforme pas automatiquement une suspicion en décision juridique de fraude.
-
----
-
-# 18. Guide pratique React/Vite
-
-Le frontend React/Vite se trouve dans :
-
-```text
-
 frontend/
-
 ```
 
-La variable :
+L'URL de l'API peut être configurée avec :
 
 ```dotenv
-
 VITE_API_BASE_URL=http://localhost:8000
-
 ```
 
-permet de configurer l'URL de l'API.
+Pour un frontend Vite lancé sur le port `5173`, les origines doivent être autorisées côté API.
 
-Pour un frontend Vite lancé sur `5173`, configurer par exemple :
+Exemple :
 
 ```dotenv
-
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-
 ```
 
-Puis redémarrer l'API afin qu'elle recharge sa configuration.
-
-Le frontend doit gérer :
+Le frontend doit notamment gérer :
 
 * les états de chargement ;
-
 * les erreurs HTTP ;
-
-* les tableaux vides ;
-
-* les réponses `is_simulation === true` ;
-
+* les réponses vides ;
+* les réponses simulées ;
 * la pagination ;
+* les filtres ;
+* les détails des alertes ;
+* la mise à jour des alertes ;
+* les KPI fraude ;
+* les KPI crédit ;
+* les demandes de crédit ;
+* les scores de crédit.
 
-* les filtres `risk_level` et `status` ;
+Les KPI doivent être récupérés depuis l'API et non recalculés à partir de données mockées côté frontend.
 
-* les détails d'une alerte ;
+---
 
-* la mise à jour du statut d'une alerte ;
+# 24. Récapitulatif des endpoints
 
-* les KPI de fraude.
+| Méthode | Endpoint                                | Fonction                 |
+| ------- | --------------------------------------- | ------------------------ |
+| `GET`   | `/`                                     | Informations générales   |
+| `GET`   | `/health`                               | État de l'API            |
+| `POST`  | `/auth/login`                           | Connexion                |
+| `GET`   | `/auth/me`                              | Utilisateur connecté     |
+| `GET`   | `/auth/users`                           | Liste des utilisateurs   |
+| `POST`  | `/auth/users`                           | Création utilisateur     |
+| `POST`  | `/fraud/predict`                        | Évaluer une transaction  |
+| `GET`   | `/fraud/alerts`                         | Lister les alertes       |
+| `GET`   | `/fraud/alerts/{alert_id}`              | Détail d'une alerte      |
+| `PATCH` | `/fraud/alerts/{alert_id}`              | Traiter une alerte       |
+| `GET`   | `/fraud/stats`                          | KPI fraude               |
+| `GET`   | `/clients`                              | Liste des clients        |
+| `GET`   | `/clients/{client_id}`                  | Détail d'un client       |
+| `POST`  | `/credit/score`                         | Calculer un score crédit |
+| `GET`   | `/credit/score/{application_id}`        | Dernier score            |
+| `GET`   | `/credit/applications`                  | Liste des demandes       |
+| `GET`   | `/credit/applications/{application_id}` | Détail d'une demande     |
+| `GET`   | `/credit/stats`                         | KPI crédit               |
 
-Les KPI doivent être affichés à partir de :
+---
+
+# 25. Limites actuelles
+
+Le backend présente actuellement les limites suivantes :
+
+* les données sont synthétiques ;
+* les scores ML sont des aides à la décision ;
+* un score fraude élevé n'est pas une preuve juridique de fraude ;
+* le traitement d'une alerte reste humain ;
+* le seuil crédit de `90 %` doit être confirmé comme règle métier finale ;
+* `explanation_factors` du scoring crédit n'est pas encore implémenté ;
+* l'authentification et les comptes de démonstration doivent être correctement initialisés dans l'environnement local ;
+* le frontend doit être connecté aux endpoints réels ;
+* les fonctionnalités doivent être testées après chaque évolution.
+
+---
+
+# 26. Responsabilités du backend
+
+Le backend est responsable de :
+
+* l'exposition des endpoints HTTP ;
+* la validation des données ;
+* l'authentification et l'autorisation ;
+* la logique métier ;
+* l'utilisation des modèles ML ;
+* l'accès à PostgreSQL ;
+* la persistance des scores et alertes ;
+* les statistiques ;
+* la gestion des erreurs ;
+* les tests de l'API et des repositories.
+
+Le frontend est responsable de l'affichage et de l'expérience utilisateur.
+
+Le backend ne doit pas être utilisé comme une interface graphique.
+
+---
+
+# 27. Bonnes pratiques de développement
+
+Lorsqu'une fonctionnalité évolue :
+
+1. modifier le schéma Pydantic si nécessaire ;
+2. modifier le service métier ;
+3. modifier le repository si l'accès aux données change ;
+4. modifier la route ;
+5. ajouter ou adapter les tests ;
+6. tester avec Swagger ;
+7. vérifier les logs ;
+8. mettre à jour ce README.
+
+Les responsabilités doivent rester séparées :
 
 ```text
-
-GET /fraud/stats
-
+Router
+  ↓
+Service
+  ↓
+Repository
+  ↓
+Database
 ```
 
-et non recalculés à partir de données mockées.
+Le modèle ML doit rester indépendant de la route HTTP.
 
 ---
 
-# 19. Récapitulatif des endpoints
+# 28. État actuel du projet
 
-| Méthode | URL                                     | Fonction                                   |
+## Fonctionnel
 
-| ------- | --------------------------------------- | ------------------------------------------ |
+* [x] API FastAPI
+* [x] PostgreSQL
+* [x] Repositories
+* [x] Clients
+* [x] Authentification JWT
+* [x] Détection fraude
+* [x] Gestion des alertes
+* [x] Statistiques fraude
+* [x] Modèle crédit réel
+* [x] Scoring crédit
+* [x] Historique des scores crédit
+* [x] Statistiques crédit
+* [x] Swagger
+* [x] Docker
+* [x] Tests automatisés
 
-| `GET`   | `/`                                     | Informations générales                     |
+## À finaliser
 
-| `GET`   | `/health`                               | État de configuration                      |
-
-| `POST`  | `/fraud/predict`                        | Évaluer une transaction                    |
-
-| `GET`   | `/fraud/alerts`                         | Lister les alertes avec pagination/filtres |
-
-| `GET`   | `/fraud/alerts/{alert_id}`              | Détail d'une alerte                        |
-
-| `PATCH` | `/fraud/alerts/{alert_id}`              | Traiter une alerte                         |
-
-| `GET`   | `/fraud/stats`                          | KPI fraude                                 |
-
-| `GET`   | `/clients`                              | Liste des clients                          |
-
-| `GET`   | `/clients/{client_id}`                  | Détail client                              |
-
-| `POST`  | `/credit/score`                         | Scoring crédit provisoire/simulé           |
-
-| `GET`   | `/credit/score/{application_id}`        | Score crédit enregistré                    |
-
-| `GET`   | `/credit/applications`                  | Liste des demandes                         |
-
-| `GET`   | `/credit/applications/{application_id}` | Détail d'une demande                       |
-
-| `GET`   | `/credit/stats`                         | KPI crédit                                 |
+* [ ] Vérification complète des comptes et rôles JWT
+* [ ] Test automatisé du vrai modèle crédit
+* [ ] Validation définitive du seuil crédit de 90 %
+* [ ] Implémentation de `explanation_factors`
+* [ ] Intégration complète du frontend avec les endpoints crédit
+* [ ] Validation finale de l'ensemble des tests
+* [ ] Mise à jour continue de la documentation
 
 ---
 
-# 20. Limites et responsabilités
+# 29. Principe métier important
 
-* Le backend FastAPI valide les requêtes, exécute la logique métier et accède aux données PostgreSQL.
+DataFlow360 est un système d'**aide à la décision**.
 
-* Le frontend React/Vite affiche l'interface et interprète les réponses HTTP.
+```text
+Données
+   ↓
+Analyse
+   ↓
+Modèle ML
+   ↓
+Score de risque
+   ↓
+Information pour l'analyste
+   ↓
+Décision humaine
+```
 
-* Le frontend ne doit jamais accéder directement à PostgreSQL.
+Le système ne doit donc pas être présenté comme un mécanisme automatique qui :
 
-* Sans `FRAUD_MODEL_PATH`, la configuration par défaut peut fonctionner en simulation.
+* bloque définitivement une transaction ;
+* accuse juridiquement un client de fraude ;
+* accorde automatiquement un crédit ;
+* refuse automatiquement un crédit.
 
-* L'artefact fraude existe dans le dépôt, mais son contrat, ses features et sa compatibilité doivent être vérifiés avant un usage réel.
-
-* Le modèle crédit n'est pas encore prêt ni validé.
-
-* Les données sont synthétiques.
-
-* Les scores sont des aides à la décision.
-
-* Une alerte `high` est une alerte de risque, pas une preuve juridique de fraude.
-
-* Le traitement `confirmed`, `reviewed` ou `dismissed` correspond au suivi de l'alerte par un analyste.
-
-* Kafka est intégré au projet pour le transport des transactions ; son fonctionnement dépend de la configuration Docker et du démarrage des composants producer/consumer.
-
-* Les données présentes dans PostgreSQL peuvent être issues du générateur synthétique et ne doivent pas être interprétées comme des données réelles de clients sénégalais.
-
-Quand une fonctionnalité change :
-
-1. mettre à jour le schéma Pydantic ;
-
-2. mettre à jour le repository/service concerné ;
-
-3. mettre à jour la route ;
-
-4. ajouter ou adapter les tests ;
-
-5. mettre à jour ce README.
-
-Toute information qui ne peut pas être confirmée par le code doit rester marquée comme provisoire ou à confirmer.
+Les décisions finales restent sous la responsabilité humaine.
