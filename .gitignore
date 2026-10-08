@@ -18,3 +18,6 @@ data/processed/*.csv
 models/fraude/mlruns/
 models/fraude/mlflow.db
 models/mlflow.db
+
+models/credit/mlruns/
+models/credit/mlflow.db
