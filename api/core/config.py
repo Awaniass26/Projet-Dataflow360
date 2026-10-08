@@ -59,12 +59,6 @@ class Settings(BaseSettings):
     # --- PostgreSQL ---
     database_url: str | None = None
 
-    # --- Kafka ---
-    kafka_bootstrap_servers: str = "kafka:29092"
-    kafka_topic_transactions: str = "transactions"
-    kafka_consumer_group: str = "fraud-detection"
-    kafka_enabled: bool = False
-
     # --- Modèles ML : à renseigner dans .env quand le membre ML les livre ---
     fraud_model_path: str | None = None
     fraud_model_version: str | None = None

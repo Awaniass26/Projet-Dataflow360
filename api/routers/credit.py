@@ -55,10 +55,11 @@ def score_credit_application(
         application_id=application.application_id,
         risk_score=result.risk_score,
         risk_level=result.risk_level,
+        eligible=result.eligible,
         status=result.status,
         is_simulation=result.is_simulation,
         message=result.message,
-        explanation_factors=None,  # jamais inventé : voir services/credit_service.py
+        explanation_factors=None,
     )
 
 

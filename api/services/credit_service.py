@@ -9,12 +9,13 @@ from api.schemas.common import ProcessingStatus, RiskLevel
 from api.schemas.credit import CreditApplicationInput
 from api.services.ml_contracts import CREDIT_MODEL_CONTRACT, ModelContract
 from api.services.model_loader import load_model
-
+import pandas as pd 
 
 @dataclass
 class CreditScoringResult:
     risk_score: float | None
     risk_level: RiskLevel | None
+    eligible: bool | None
     status: ProcessingStatus
     is_simulation: bool
     message: str
@@ -42,43 +43,82 @@ class CreditScoringService:
                 "en développement pour tester les routes sans modèle réel."
             )
 
-        model = load_model(self._settings.credit_model_path, self._contract.artifact_format)
+        model = load_model(
+            self._settings.credit_model_path,
+            self._contract.artifact_format,
+        )
         features = self._build_feature_vector(application)
 
         try:
             predict_fn = getattr(model, self._contract.predict_method)
-            raw_output = predict_fn([features])
-            probability = float(raw_output[0][1]) if self._contract.output_is_probability else float(raw_output[0])
+            raw_output = predict_fn(features)
+
+            probability = (
+                float(raw_output[0][1])
+                if self._contract.output_is_probability
+                else float(raw_output[0])
+            )
+
         except (AttributeError, IndexError, TypeError, ValueError) as exc:
             raise ModelPredictionError(
-                f"Le modèle de crédit n'a pas produit un résultat exploitable : {exc}"
+                "Le modèle de crédit n'a pas produit un résultat exploitable : "
+                f"{exc}"
             ) from exc
+
+        # Seuil d'approbation défini par le Data Scientist : 90 %
+        approval_threshold = 0.90
+
+        if probability >= approval_threshold:
+            risk_level = RiskLevel.LOW
+        else:
+            risk_level = RiskLevel.HIGH
+
+        eligible = probability >= approval_threshold
 
         return CreditScoringResult(
             risk_score=round(probability, 4),
-            risk_level=None,
+            risk_level=risk_level,
+            eligible=eligible,
             status=ProcessingStatus.COMPLETED,
             is_simulation=False,
-            message="Score de risque calculé par le modèle de scoring de crédit.",
+            message=(
+                "Score de risque calculé par le modèle de scoring de crédit. "
+                f"Seuil d'approbation : {approval_threshold:.0%}."
+            ),
         )
 
-    def _build_feature_vector(self, application: CreditApplicationInput) -> list[float]:
-        """PROVISOIRE, à revoir avec le membre ML."""
-        values: list[float] = []
-        for name in self._contract.feature_names:
-            value = getattr(application, name, None)
-            if value is None:
-                raise ModelPredictionError(
-                    f"Feature manquante pour le modèle de crédit : '{name}'."
-                )
-            values.append(float(value))
-        return values
+    def _build_feature_vector(
+        self,
+        application: CreditApplicationInput,
+    ) -> pd.DataFrame:
+        """Construit le DataFrame attendu par le pipeline ML."""
+
+        data = {
+            "age": application.age,
+            "anciennete_compte_mois": application.anciennete_compte_mois,
+            "nb_transactions_90j": application.nb_transactions_90j,
+            "montant_entrees_90j": application.montant_entrees_90j,
+            "montant_sorties_90j": application.montant_sorties_90j,
+            "solde_moyen_90j": application.solde_moyen_90j,
+            "regularite_revenus": application.regularite_revenus,
+            "nombre_credits_precedents": application.nombre_credits_precedents,
+            "taux_remboursement": application.taux_remboursement,
+            "nombre_credits_en_retard": application.nombre_credits_en_retard,
+            "nombre_credits_impayes": application.nombre_credits_impayes,
+            "montant_credit_demande": application.montant_credit_demande,
+            "duree_credit_demande": application.duree_credit_demande,
+            "stabilite_flux": application.stabilite_flux,
+            "type_activite": application.type_activite,
+        }
+
+        return pd.DataFrame([data], columns=self._contract.feature_names)
 
     @staticmethod
     def _simulate(application: CreditApplicationInput) -> CreditScoringResult:
         return CreditScoringResult(
             risk_score=None,
             risk_level=None,
+            eligible=None,
             status=ProcessingStatus.SIMULATED,
             is_simulation=True,
             message=(

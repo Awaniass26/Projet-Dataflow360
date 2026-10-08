@@ -21,3 +21,4 @@ models/mlflow.db
 
 models/credit/mlruns/
 models/credit/mlflow.db
+node_modules/
