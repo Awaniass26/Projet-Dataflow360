@@ -34,7 +34,7 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 shadow-nav backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-2">
+      <div className="flex h-16 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <NavLink to="/" className="flex shrink-0 items-center gap-3">
           <img
@@ -55,7 +55,7 @@ export function Navbar() {
         </NavLink>
 
         {/* Desktop nav */}
-        <nav className="ml-4 hidden flex-1 items-center gap-1 md:flex">
+        <nav className="ml-4 hidden flex-1 items-center justify-center gap-1 md:flex">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
@@ -94,7 +94,7 @@ export function Navbar() {
         </nav>
 
         {/* User + logout */}
-        <div className="ml-auto hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 md:flex">
           {user && (
             <div className="text-right">
               <p className="text-sm font-semibold text-slate-800">

@@ -79,7 +79,7 @@ export function DashboardPage() {
           <h3 className="mb-4 text-sm font-semibold text-slate-800">
             Distribution des risques crédit
           </h3>
-          <div className="h-72">
+          <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={distribution || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -101,7 +101,7 @@ export function DashboardPage() {
           <h3 className="mb-4 text-sm font-semibold text-slate-800">
             Évolution des alertes fraude
           </h3>
-          <div className="h-72">
+          <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trend || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
