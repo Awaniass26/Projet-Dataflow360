@@ -6,7 +6,7 @@ Contrairement au générateur historique (Sprint 1), ce script :
   - génère des transactions datées de MAINTENANT, en continu
   - ne contient JAMAIS de label `fraude` — personne ne le sait à cet instant
   - publie chaque transaction sur Kafka, topic "transactions.raw"
-
+----
 Usage : python producer.py [--intervalle-sec 1] [--n-max 0]
     --n-max 0 = tourne indéfiniment (Ctrl+C pour arrêter)
 """

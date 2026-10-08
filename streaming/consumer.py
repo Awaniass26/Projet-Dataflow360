@@ -12,7 +12,7 @@ Dès que l'API répond, elle est utilisée en priorité, sans rien changer
 au code.
 
 Voir CONTRAT_API_FRAUDE.md pour le format attendu par l'API.
-
+-----
 Usage : python consumer.py
 """
 
