@@ -1,8 +1,18 @@
+<<<<<<< HEAD
+fastapi 
+uvicorn
+Faker==40.40.0
+=======
 Faker
+>>>>>>> main
 numpy==2.5.3
 pandas==3.0.6
 pymongo==4.18.2
 python-dotenv==1.2.3
+<<<<<<< HEAD
+SQLAlchemy==2.1.1
+requests==2.34.2
+=======
 
 
 # --- Backend API (DataFlow360) ---
@@ -33,3 +43,4 @@ email-validator>=2.1
 
 
 confluent-kafka>=2.3
+>>>>>>> main
