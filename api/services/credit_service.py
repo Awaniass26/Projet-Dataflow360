@@ -118,7 +118,7 @@ class CreditScoringService:
         return CreditScoringResult(
             risk_score=None,
             risk_level=None,
-            eligible=None
+            eligible=None,
             status=ProcessingStatus.SIMULATED,
             is_simulation=True,
             message=(
