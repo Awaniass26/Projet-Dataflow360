@@ -147,6 +147,7 @@ class PostgresFraudAlertRepository:
         page_size: int = 50,
         risk_level: RiskLevel | None = None,
         status: FraudAlertStatus | None = None,
+        data_origin: str | None = None,
     ) -> tuple[list[FraudAlertResponse], int]:
         """Retourne une page d'alertes avec filtres optionnels."""
 
@@ -160,6 +161,11 @@ class PostgresFraudAlertRepository:
         if status is not None:
             query = query.filter(
                 FraudAlert.status == status.value
+            )
+
+        if data_origin is not None:            # ← AJOUT
+            query = query.filter(
+                FraudAlert.data_origin == data_origin
             )
 
         total = query.count()
