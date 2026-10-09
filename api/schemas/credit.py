@@ -114,3 +114,24 @@ class CreditStatsResponse(BaseModel):
     average_requested_amount: float | None
     risk_distribution: dict[str, int]
     validated_clients: int
+
+
+class CreditApplicationAutoInput(BaseModel):
+    """Entrée simplifiée pour `POST /credit/score/auto`.
+
+    Le backend calcule automatiquement 10 des 15 features
+    à partir de l'historique du client.
+    """
+
+    application_id: str | None = Field(
+        default=None,
+        description="Si absent, généré automatiquement (AUTO-{timestamp}).",
+    )
+    account_id: str = Field(..., min_length=1, examples=["CLI-000001"])
+    montant_credit_demande: float = Field(..., gt=0)
+    duree_credit_demande: int = Field(..., gt=0)
+    type_activite: str = Field(
+        ...,
+        min_length=1,
+        examples=["commerce", "agriculture", "transport", "services"],
+    )

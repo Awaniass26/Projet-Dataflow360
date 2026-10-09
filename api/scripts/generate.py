@@ -26,8 +26,9 @@ fake_settings = Settings()
 
 NUMBER_OF_CLIENTS = 500
 
-MIN_TRANSACTIONS_PER_CLIENT = 10
-MAX_TRANSACTIONS_PER_CLIENT = 30
+# Aligné sur la note de transmission EDA (médiane ~44)
+MIN_TRANSACTIONS_PER_CLIENT = 25
+MAX_TRANSACTIONS_PER_CLIENT = 70
 
 MIN_APPLICATIONS_PER_CLIENT = 0
 MAX_APPLICATIONS_PER_CLIENT = 3
@@ -35,8 +36,7 @@ MAX_APPLICATIONS_PER_CLIENT = 3
 FRAUD_ALERT_PROBABILITY = 0.08
 
 RANDOM_SEED = 42
-DATASET_REFERENCE_TIME = datetime(2026, 1, 1, tzinfo=timezone.utc)
-
+DATASET_REFERENCE_TIME = datetime.now(timezone.utc)
 
 def _get_rng(rng: random.Random | None) -> random.Random:
     return random.Random(RANDOM_SEED) if rng is None else rng
@@ -125,7 +125,8 @@ def generate_clients(rng: random.Random | None = None) -> list[Client]:
             sexe=rng.choice(SEXES),
             region=rng.choice(REGIONS),
             account_type=rng.choice(ACCOUNT_TYPES),
-            created_at=DATASET_REFERENCE_TIME - timedelta(days=rng.randint(0, 365)),
+            # Ancienneté alignée sur la note (~22 mois médiane)
+            created_at=DATASET_REFERENCE_TIME - timedelta(days=rng.randint(30, 1800)),
             data_origin="synthetic",
         )
 
@@ -142,31 +143,44 @@ def generate_transactions(
     clients: list[Client],
     rng: random.Random | None = None,
 ) -> list[Transaction]:
-    """Génère les transactions liées aux clients."""
+    """Génère les transactions liées aux clients.
+
+    Aligné sur la note de transmission EDA :
+    - nb_transactions_90j ≈ 44 (médiane)
+    - montant_entrees_90j ≈ 740 000 (moyenne)
+    - montant_sorties_90j ≈ 736 000 (moyenne)
+    """
 
     rng = _get_rng(rng)
     transactions = []
 
     for client in clients:
+        # Nombre de transactions sur 90j (aligné sur la note)
         number_of_transactions = rng.randint(
             MIN_TRANSACTIONS_PER_CLIENT,
             MAX_TRANSACTIONS_PER_CLIENT,
         )
 
+        # 70% entrées, 30% sorties (pour équilibrer ~740k/736k)
         for _ in range(number_of_transactions):
             occurred_at = DATASET_REFERENCE_TIME - timedelta(
-                days=rng.randint(0, 180),
+                days=rng.randint(0, 90),      # ← fenêtre 90j
                 hours=rng.randint(0, 23),
                 minutes=rng.randint(0, 59),
             )
 
+            # Montants alignés sur la distribution de la note
+            # Médiane ~440k, moyenne ~740k → distribution log-normale
+            amount = round(
+                rng.lognormvariate(mu=8.3, sigma=0.9),
+                2,
+            )
+            amount = max(100.0, min(amount, 300_000.0))
+
             transaction = Transaction(
                 transaction_id=f"TX-{len(transactions) + 1:08d}",
                 client_id=client.client_id,
-                amount=round(
-                    rng.uniform(500, 500_000),
-                    2,
-                ),
+                amount=amount,
                 type=rng.choice(TRANSACTION_TYPES),
                 channel=rng.choice(CHANNELS),
                 occurred_at=occurred_at,

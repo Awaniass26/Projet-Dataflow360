@@ -85,6 +85,168 @@ class PostgresCreditScoreRepository:
             .subquery()
         )
 
+
+    def compute_features_from_history(
+        self,
+        client_id: str,
+        montant_credit_demande: float,
+        duree_credit_demande: int,
+        type_activite: str,
+        window_days: int = 90,
+    ) -> dict | None:
+        """Calcule les 15 features du modèle crédit depuis l'historique du client.
+
+        Retourne None si le client n'existe pas.
+        """
+        from datetime import datetime, timedelta, timezone
+        from api.db.models import Client, Transaction
+
+        client = self._session.get(Client, client_id)
+        if client is None:
+            return None
+
+        # --- 1. Infos client ---
+        today = datetime.now(timezone.utc)
+        if client.created_at is not None:
+            delta = today - client.created_at.replace(tzinfo=timezone.utc)
+            anciennete_mois = max(0, int(delta.days / 30))
+        else:
+            anciennete_mois = 0
+
+        age = client.age
+
+        # --- 2. Transactions 90j du client ---
+        cutoff = today - timedelta(days=window_days)
+
+        transactions = (
+            self._session.query(Transaction)
+            .filter(
+                Transaction.client_id == client_id,
+                Transaction.occurred_at >= cutoff,
+            )
+            .all()
+        )
+
+        nb_transactions_90j = len(transactions)
+
+        # Entrées = deposit + transfer
+        # Sorties = withdrawal + payment
+        montant_entrees_90j = sum(
+            t.amount for t in transactions if t.type in ("deposit", "transfer")
+        )
+        montant_sorties_90j = sum(
+            t.amount for t in transactions if t.type in ("withdrawal", "payment")
+        )
+        solde_moyen_90j = max(0.0, montant_entrees_90j - montant_sorties_90j)
+
+        # Régularité : jours actifs / 90 (avec racine carrée pour ne pas écraser)
+        if transactions:
+            jours_actifs = len(set(t.occurred_at.date() for t in transactions))
+            regularite_revenus = min(100.0, (jours_actifs / window_days) ** 0.5 * 100)
+        else:
+            regularite_revenus = 0.0
+
+        # Stabilité du flux : 1 / (1 + CV) → reste dans (0, 1]
+        if len(transactions) >= 2:
+            montants = [t.amount for t in transactions if t.amount > 0]
+            if montants and sum(montants) > 0:
+                mean = sum(montants) / len(montants)
+                variance = sum((m - mean) ** 2 for m in montants) / len(montants)
+                std = variance ** 0.5
+                cv = std / mean if mean > 0 else 1.0
+                stabilite_flux = (1.0 / (1.0 + cv)) * 100
+               # ← nouvelle formule
+            else:
+                stabilite_flux = 0.0
+        else:
+            stabilite_flux = 0.0
+
+        # --- 3. Historique des crédits ---
+        from api.db.models import CreditApplication, CreditScore
+
+        apps = (
+            self._session.query(CreditApplication)
+            .filter(CreditApplication.client_id == client_id)
+            .all()
+        )
+        nombre_credits_precedents = len(apps)
+
+        # Taux de remboursement moyen = moyenne des risk_score des crédits passés
+        if apps:
+            app_ids = [a.application_id for a in apps]
+            scores = (
+                self._session.query(CreditScore)
+                .filter(CreditScore.application_id.in_(app_ids))
+                .all()
+            )
+            if scores:
+                taux_remboursement = sum(s.risk_score for s in scores) / len(scores) * 100
+            else:
+                taux_remboursement = 50.0   # valeur médiane par défaut
+        else:
+            taux_remboursement = 0.5
+
+        # Impayés = crédits avec score < 0.3
+        nombre_credits_impayes = 0
+        if apps:
+            app_ids = [a.application_id for a in apps]
+            nombre_credits_impayes = (
+                self._session.query(CreditScore)
+                .filter(
+                    CreditScore.application_id.in_(app_ids),
+                    CreditScore.risk_score < 0.3,
+                )
+                .count()
+            )
+
+        nombre_credits_en_retard = 0  # pas de données de retard
+
+                # --- 4. Les 15 features ---
+        result = {
+            "age": age,
+            "anciennete_compte_mois": anciennete_mois,
+            "nb_transactions_90j": nb_transactions_90j,
+            "montant_entrees_90j": float(montant_entrees_90j),
+            "montant_sorties_90j": float(montant_sorties_90j),
+            "solde_moyen_90j": float(solde_moyen_90j),
+            "regularite_revenus": float(regularite_revenus),
+            "nombre_credits_precedents": nombre_credits_precedents,
+            "taux_remboursement": float(taux_remboursement),
+            "nombre_credits_en_retard": nombre_credits_en_retard,
+            "nombre_credits_impayes": nombre_credits_impayes,
+            "montant_credit_demande": float(montant_credit_demande),
+            "duree_credit_demande": int(duree_credit_demande),
+            "stabilite_flux": float(stabilite_flux),
+            "type_activite": type_activite,
+        }
+
+        # 🔍 DEBUG : log des features
+        import logging
+        logging.warning("=== FEATURES CLI %s ===", client_id)
+        for k, v in sorted(result.items()):
+            logging.warning("  %s = %r", k, v)
+
+        return result
+
+        # --- 4. Les 15 features ---
+        return {
+            "age": age,
+            "anciennete_compte_mois": anciennete_mois,
+            "nb_transactions_90j": nb_transactions_90j,
+            "montant_entrees_90j": float(montant_entrees_90j),
+            "montant_sorties_90j": float(montant_sorties_90j),
+            "solde_moyen_90j": float(solde_moyen_90j),
+            "regularite_revenus": float(regularite_revenus),
+            "nombre_credits_precedents": nombre_credits_precedents,
+            "taux_remboursement": float(taux_remboursement),
+            "nombre_credits_en_retard": nombre_credits_en_retard,
+            "nombre_credits_impayes": nombre_credits_impayes,
+            "montant_credit_demande": float(montant_credit_demande),
+            "duree_credit_demande": int(duree_credit_demande),
+            "stabilite_flux": float(stabilite_flux),
+            "type_activite": type_activite,
+        }
+
     def save_score(
         self,
         application_id: str,

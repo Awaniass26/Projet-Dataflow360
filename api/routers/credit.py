@@ -12,6 +12,7 @@ from api.repositories.credit_repository import CreditScoreRepository
 from api.schemas.common import ERROR_RESPONSES
 from api.schemas.credit import (
     CreditApplicationInput,
+    CreditApplicationAutoInput,
     CreditApplicationResponse,
     CreditScoreRecord,
     CreditScoreResponse,
@@ -120,3 +121,59 @@ def get_credit_stats(
     repository: CreditScoreRepository = Depends(get_credit_score_repository),
 ) -> CreditStatsResponse:
     return repository.get_stats()
+
+
+
+@router.post(
+    "/score/auto",
+    response_model=CreditScoreResponse,
+    responses=ERROR_RESPONSES,
+    summary="Évalue une demande de crédit en calculant les features automatiquement",
+)
+def score_credit_auto(
+    application: CreditApplicationAutoInput,
+    service: CreditScoringService = Depends(get_credit_service),
+    repository: CreditScoreRepository = Depends(get_credit_score_repository),
+) -> CreditScoreResponse:
+    """Évalue une demande de crédit.
+
+    Le backend calcule les 10 features manquantes depuis l'historique
+    du client (transactions, crédits précédents), puis appelle le modèle ML.
+
+    L'analyste ne saisit que :
+    - account_id
+    - montant_credit_demande
+    - duree_credit_demande
+    - type_activite
+    """
+    import time
+
+    # 1. Calcul des features depuis l'historique
+    features = repository.compute_features_from_history(
+        client_id=application.account_id,
+        montant_credit_demande=application.montant_credit_demande,
+        duree_credit_demande=application.duree_credit_demande,
+        type_activite=application.type_activite,
+    )
+
+    if features is None:
+        raise ResourceNotFoundError(
+            f"Aucun client trouvé pour '{application.account_id}'."
+        )
+
+    # 2. Application_id auto si non fourni
+    application_id = application.application_id or f"AUTO-{int(time.time())}"
+
+    # 3. Appel du modèle avec les features calculées
+    result = service.score_from_features_dict(features)
+
+    return CreditScoreResponse(
+        application_id=application_id,
+        risk_score=result.risk_score,
+        risk_level=result.risk_level,
+        eligible=result.eligible,
+        status=result.status,
+        is_simulation=result.is_simulation,
+        message=result.message,
+        explanation_factors=None,
+    )

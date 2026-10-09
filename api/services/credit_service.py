@@ -87,6 +87,74 @@ class CreditScoringService:
             ),
         )
 
+
+    def score_from_features_dict(self, features: dict) -> "CreditScoringResult":
+        """Appelle le modèle avec un dict de features déjà calculées.
+
+        Utilisé par `score_auto` après calcul depuis l'historique.
+        """
+        if not self.is_configured:
+            if self._settings.simulation_enabled:
+                # Construire un CreditApplicationInput à partir du dict
+                from api.schemas.credit import CreditApplicationInput
+                try:
+                    app = CreditApplicationInput(**features)
+                except Exception:
+                    return CreditScoringResult(
+                        risk_score=None,
+                        risk_level=None,
+                        eligible=None,
+                        status=ProcessingStatus.SIMULATED,
+                        is_simulation=True,
+                        message=(
+                            "SIMULATION : aucun modèle de scoring de crédit "
+                            "n'est configuré. Les features ont été calculées."
+                        ),
+                    )
+                return self._simulate(app)
+            raise ModelNotConfiguredError(
+                "Aucun modèle de scoring de crédit n'est configuré."
+            )
+
+        model = load_model(
+            self._settings.credit_model_path,
+            self._contract.artifact_format,
+        )
+
+        # Construire le DataFrame avec les 15 features
+        import pandas as pd
+        values = [features.get(name) for name in self._contract.feature_names]
+        df = pd.DataFrame([values], columns=self._contract.feature_names)
+
+        try:
+            predict_fn = getattr(model, self._contract.predict_method)
+            raw_output = predict_fn(df)
+            probability = (
+                float(raw_output[0][1])
+                if self._contract.output_is_probability
+                else float(raw_output[0])
+            )
+        except (AttributeError, IndexError, TypeError, ValueError) as exc:
+            raise ModelPredictionError(
+                f"Le modèle de crédit n'a pas produit un résultat exploitable : {exc}"
+            ) from exc
+
+        approval_threshold = 0.90
+        risk_level = RiskLevel.LOW if probability >= approval_threshold else RiskLevel.HIGH
+        eligible = probability >= approval_threshold
+
+        return CreditScoringResult(
+            risk_score=round(probability, 4),
+            risk_level=risk_level,
+            eligible=eligible,
+            status=ProcessingStatus.COMPLETED,
+            is_simulation=False,
+            message=(
+                "Score de risque calculé par le modèle de scoring de crédit "
+                f"à partir de l'historique du client. Seuil : {approval_threshold:.0%}."
+            ),
+        )
+
     def _build_feature_vector(
         self,
         application: CreditApplicationInput,
