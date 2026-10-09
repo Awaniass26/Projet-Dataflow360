@@ -3,7 +3,7 @@ import type {
   Client,
   ClientDetail,
   ClientListResponse,
-  CreditApplicationInput,
+  CreditScoreFormInput,
   CreditScoreResponse,
 } from "@/types/client";
 
@@ -22,13 +22,11 @@ export async function getClientById(clientId: string): Promise<ClientDetail> {
   return data;
 }
 
+/** Envoie les champs métier ; le backend calcule le reste des features ML. */
 export async function submitCreditScore(
-  application: CreditApplicationInput
+  form: CreditScoreFormInput
 ): Promise<CreditScoreResponse> {
-  const { data } = await api.post<CreditScoreResponse>(
-    "/credit/score",
-    application
-  );
+  const { data } = await api.post<CreditScoreResponse>("/credit/score", form);
   return data;
 }
 

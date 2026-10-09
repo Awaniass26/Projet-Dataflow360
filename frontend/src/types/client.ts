@@ -36,22 +36,21 @@ export interface ClientDetail extends Client {
   credit_applications: ClientCreditApplication[];
 }
 
-export interface CreditApplicationInput {
-  application_id: string;
+/** Payload formulaire → POST /credit/score (features calculées côté backend). */
+export interface CreditScoreFormInput {
   account_id: string;
-  requested_amount: number;
-  requested_duration_months: number;
-  estimated_monthly_income?: number;
-  estimated_monthly_expenses?: number;
-  monthly_transaction_volume?: number;
-  monthly_transaction_frequency?: number;
-  repayment_history_score?: number;
+  age: number;
+  montant_credit_demande: number;
+  duree_credit_demande: number;
+  type_activite: string;
+  application_id?: string;
 }
 
 export interface CreditScoreResponse {
   application_id: string;
   risk_score: number | null;
   risk_level: "low" | "medium" | "high" | null;
+  eligible: boolean | null;
   status: "completed" | "simulated";
   is_simulation: boolean;
   message: string;
