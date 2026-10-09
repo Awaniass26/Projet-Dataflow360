@@ -1,4 +1,4 @@
-"""
+q"""
 streaming/producer.py
 
 Simule le flux de transactions arrivant en temps réel sur la plateforme.

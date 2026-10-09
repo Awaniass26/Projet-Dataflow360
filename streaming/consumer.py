@@ -10,6 +10,7 @@ L'API :
   - persiste automatiquement dans api_fraud_alerts si HIGH
 
 Le consumer NE persiste RIEN lui-même (délégation à l'API).
+Le producer calcule déjà les features : le consumer les transmet telles quelles.
 
 Usage : python consumer.py
 """
@@ -19,7 +20,6 @@ import os
 import time
 from datetime import datetime
 
-import redis
 import requests
 from kafka import KafkaConsumer
 
@@ -33,10 +33,6 @@ except ImportError:
 KAFKA_HOST = os.getenv("KAFKA_HOST", "localhost")
 KAFKA_PORT = os.getenv("KAFKA_PORT", "9092")
 TOPIC = "transactions.raw"
-
-# --- Configuration Redis (profils) ---
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6380"))
 
 # --- Configuration API DataFlow360 ---
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
@@ -80,16 +76,6 @@ def get_token() -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Redis (profils comportementaux)
-# ---------------------------------------------------------------------------
-def lire_profil(r: redis.Redis, id_compte: str) -> dict:
-    brut = r.get(f"profil:{id_compte}")
-    if brut is None:
-        return {"montant_moyen": None, "appareils_connus": [], "destinataires_connus": []}
-    return json.loads(brut)
-
-
-# ---------------------------------------------------------------------------
 # Mapping des champs Data Ing → API DataFlow360
 # ---------------------------------------------------------------------------
 _TYPE_MAPPING = {
@@ -122,10 +108,12 @@ def _normaliser_canal(value: str) -> str:
     return _CHANNEL_MAPPING.get(value, value)
 
 
-def _build_api_payload(tx: dict, features: dict) -> dict:
-    """Construit le payload attendu par POST /fraud/predict."""
+def _build_api_payload(tx: dict) -> dict:
+    """Construit le payload attendu par POST /fraud/predict.
+
+    Le producer calcule déjà les features : on les transmet telles quelles.
+    """
     occurred_at = tx["horodatage"]
-    # Ajouter le Z pour que ce soit UTC ISO 8601
     if not occurred_at.endswith("Z") and "+" not in occurred_at:
         occurred_at = occurred_at + "Z"
 
@@ -138,25 +126,29 @@ def _build_api_payload(tx: dict, features: dict) -> dict:
         "channel": _normaliser_canal(tx["canal"]),
         "occurred_at": occurred_at,
         "sender_account_id": tx["id_compte_emetteur"],
-        "recipient_account_id": tx["id_compte_destinataire"] or tx["id_compte_emetteur"],
-        "hour": hour,
-        "ecart_montant_moyen": float(features["ecart_montant_moyen"]),
-        "ecart_heure_habituelle": 0.0,  # pas fourni par le producer actuel
-        "nouvel_appareil": bool(features["nouvel_appareil"]),
-        "nouveau_destinataire": bool(features["nouveau_destinataire"]),
+        "recipient_account_id": (
+            tx["id_compte_destinataire"]
+            if tx["id_compte_destinataire"]
+            else tx["id_compte_emetteur"]
+        ),
+        "hour": int(tx.get("hour", hour)),
+        "ecart_montant_moyen": float(tx.get("ecart_montant_moyen", 1.0)),
+        "ecart_heure_habituelle": float(tx.get("ecart_heure_habituelle", 0.0)),
+        "nouvel_appareil": bool(tx.get("nouvel_appareil", False)),
+        "nouveau_destinataire": bool(tx.get("nouveau_destinataire", False)),
     }
 
 
 # ---------------------------------------------------------------------------
 # Appel API DataFlow360
 # ---------------------------------------------------------------------------
-def appeler_api(tx: dict, features: dict) -> dict | None:
+def appeler_api(tx: dict) -> dict | None:
     """Appelle POST /fraud/predict. Retourne None si échec."""
     token = get_token()
     if token is None:
         return None
 
-    payload = _build_api_payload(tx, features)
+    payload = _build_api_payload(tx)
 
     try:
         resp = requests.post(
@@ -175,26 +167,8 @@ def appeler_api(tx: dict, features: dict) -> dict | None:
 # ---------------------------------------------------------------------------
 # Traitement d'une transaction
 # ---------------------------------------------------------------------------
-def traiter_transaction(tx: dict, r: redis.Redis):
-    profil = lire_profil(r, tx["id_compte_emetteur"])
-
-    # Calcul des features (comme avant)
-    montant = tx["montant"]
-    montant_moyen = profil.get("montant_moyen")
-    ecart_montant_moyen = (montant / montant_moyen) if montant_moyen else 1.0
-    nouvel_appareil = tx["id_appareil"] not in profil.get("appareils_connus", [])
-    nouveau_destinataire = (
-        tx["id_compte_destinataire"] != ""
-        and tx["id_compte_destinataire"] not in profil.get("destinataires_connus", [])
-    )
-    features = {
-        "ecart_montant_moyen": ecart_montant_moyen,
-        "nouvel_appareil": nouvel_appareil,
-        "nouveau_destinataire": nouveau_destinataire,
-    }
-
-    # Appel API
-    resultat = appeler_api(tx, features)
+def traiter_transaction(tx: dict):
+    resultat = appeler_api(tx)
 
     if resultat is None:
         print(f"  ⚠️  API indisponible : {tx['id_transaction']} ignoré")
@@ -213,8 +187,6 @@ def traiter_transaction(tx: dict, r: redis.Redis):
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-
     print(f"API ciblée : {API_PREDICT_URL}")
     print(f"Service    : {SERVICE_EMAIL}")
 
@@ -236,7 +208,7 @@ def main():
     print("En écoute... Ctrl+C pour arrêter.")
     try:
         for message in consumer:
-            traiter_transaction(message.value, r)
+            traiter_transaction(message.value)
     except KeyboardInterrupt:
         print("\nArrêt demandé.")
 
