@@ -56,3 +56,66 @@
   background: #cbd5e1;
   border-radius: 3px;
 }
+
+/* ============================================================
+   Animations professionnelles SenTerangaSafe
+   ============================================================ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.45s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out both;
+}
+
+.live-dot {
+  animation: soft-pulse 1.8s ease-in-out infinite;
+}
+
+/* Carte au survol */
+.shadow-card {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.shadow-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 12px 28px rgba(27, 79, 156, 0.06);
+}
+
+/* Soft shadow utilitaire */
+.shadow-soft {
+  box-shadow: 0 2px 8px rgba(27, 79, 156, 0.12);
+}

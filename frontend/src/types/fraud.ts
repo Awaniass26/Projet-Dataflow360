@@ -27,6 +27,13 @@ export interface FraudEvolutionPoint {
   suspicious_amount: number;
 }
 
+export interface FraudZonePoint {
+  zone: string;
+  alert_count: number;
+  transaction_count: number;
+  alert_rate: number;
+}
+
 export interface FraudStats {
   total_transactions: number;
   total_alerts: number;
@@ -35,6 +42,7 @@ export interface FraudStats {
   alerts_by_status: Record<string, number>;
   alerts_by_risk_level: Record<string, number>;
   alerts_evolution: FraudEvolutionPoint[];
+  alerts_by_zone?: FraudZonePoint[];
 }
 
 export interface FraudAlertUpdate {

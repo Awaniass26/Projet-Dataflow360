@@ -25,6 +25,12 @@ interface FraudStatsApi {
     alert_count: number;
     suspicious_amount: number;
   }[];
+  alerts_by_zone?: {
+    zone: string;
+    alert_count: number;
+    transaction_count: number;
+    alert_rate: number;
+  }[];
 }
 
 async function getDashboardData() {
@@ -83,10 +89,21 @@ export async function getScoreDistribution(): Promise<ScoreDistribution[]> {
 
 export async function getMonthlyTrend(): Promise<MonthlyTrend[]> {
   const { fraud } = await getDashboardData();
-  return (fraud.alerts_evolution ?? []).map((item) => ({
-    month: String(item.date),
-    averageScore: 0,
-    fraudCount: item.alert_count ?? 0,
-    registrations: 0,
-  }));
+  const byMonth = new Map<string, number>();
+
+  for (const item of fraud.alerts_evolution ?? []) {
+    // Agrégation mensuelle YYYY-MM à partir des points journaliers de l'API
+    const key = String(item.date).slice(0, 7);
+    if (!key || key.length < 7) continue;
+    byMonth.set(key, (byMonth.get(key) ?? 0) + (item.alert_count ?? 0));
+  }
+
+  return Array.from(byMonth.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, fraudCount]) => ({
+      month,
+      averageScore: 0,
+      fraudCount,
+      registrations: 0,
+    }));
 }

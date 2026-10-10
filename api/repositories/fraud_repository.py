@@ -11,6 +11,7 @@ from api.db.models import Client, FraudAlert, Transaction
 from api.schemas.common import FraudAlertStatus, RiskLevel
 from api.schemas.fraud import (
     FraudAlertEvolutionPoint,
+    FraudAlertZonePoint,
     FraudAlertResponse,
     FraudStatsResponse,
     TransactionInput,
@@ -308,6 +309,49 @@ class PostgresFraudAlertRepository:
             .all()
         )
 
+        # Alertes et taux par zone géographique (région client)
+        zone_tx_rows = (
+            self._session.query(
+                Client.region.label("zone"),
+                func.count(Transaction.transaction_id).label("transaction_count"),
+            )
+            .join(Transaction, Transaction.client_id == Client.client_id)
+            .group_by(Client.region)
+            .all()
+        )
+        zone_alert_rows = (
+            self._session.query(
+                Client.region.label("zone"),
+                func.count(FraudAlert.alert_id).label("alert_count"),
+            )
+            .join(Transaction, Transaction.client_id == Client.client_id)
+            .join(
+                FraudAlert,
+                FraudAlert.transaction_id == Transaction.transaction_id,
+            )
+            .group_by(Client.region)
+            .all()
+        )
+        alerts_by_zone_map = {
+            row.zone: row.alert_count for row in zone_alert_rows
+        }
+        alerts_by_zone = []
+        for row in zone_tx_rows:
+            zone = row.zone or "Inconnue"
+            tx_count = int(row.transaction_count or 0)
+            alert_count = int(alerts_by_zone_map.get(row.zone, 0))
+            alerts_by_zone.append(
+                FraudAlertZonePoint(
+                    zone=zone,
+                    alert_count=alert_count,
+                    transaction_count=tx_count,
+                    alert_rate=(
+                        alert_count / tx_count if tx_count else 0.0
+                    ),
+                )
+            )
+        alerts_by_zone.sort(key=lambda z: z.alert_rate, reverse=True)
+
         return FraudStatsResponse(
             total_transactions=total_transactions,
             total_alerts=total_alerts,
@@ -329,6 +373,7 @@ class PostgresFraudAlertRepository:
                 )
                 for row in evolution_rows
             ],
+            alerts_by_zone=alerts_by_zone,
         )
 
     @staticmethod

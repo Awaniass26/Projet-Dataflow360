@@ -142,7 +142,7 @@ services:
       APP_NAME: ${APP_NAME:-DataFlow360 API}
       APP_VERSION: ${APP_VERSION:-0.1.0}
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      SIMULATION_ENABLED: ${SIMULATION_ENABLED:-true}
+      SIMULATION_ENABLED: ${SIMULATION_ENABLED:-false}
 
       MONGO_URL: mongodb://${MONGO_USER:-terangasafe}:${MONGO_PASSWORD:-terangasafe_pwd}@mongodb:27017/${MONGO_DB:-terangasafe}?authSource=admin
       MONGO_HOST: mongodb

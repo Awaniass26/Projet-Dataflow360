@@ -87,14 +87,11 @@ class FraudAlertResponse(BaseModel):
 
 
 class FraudAlertUpdate(BaseModel):
-    """Données permettant à un analyste de traiter une alerte."""
+    """Mise à jour du statut d'une alerte par un analyste."""
 
     status: FraudAlertStatus
-    reviewed_by: str = Field(..., min_length=1, max_length=100)
-    explanation: str | None = Field(
-        default=None,
-        max_length=1000,
-    )
+    reviewed_by: str = Field(..., min_length=1)
+    explanation: str | None = None
 
 
 class FraudAlertListResponse(BaseModel):
@@ -115,6 +112,17 @@ class FraudAlertEvolutionPoint(BaseModel):
     suspicious_amount: float
 
 
+class FraudAlertZonePoint(BaseModel):
+    """Répartition des alertes et taux de suspicion par zone géographique."""
+
+    zone: str
+    alert_count: int
+    transaction_count: int
+    alert_rate: float = Field(
+        description="Taux d'alertes sur les transactions de la zone (0 à 1)."
+    )
+
+
 class FraudStatsResponse(BaseModel):
     """KPI fraude calculés depuis les transactions et alertes PostgreSQL."""
 
@@ -130,6 +138,4 @@ class FraudStatsResponse(BaseModel):
     alerts_by_status: dict[str, int]
     alerts_by_risk_level: dict[str, int]
     alerts_evolution: list[FraudAlertEvolutionPoint]
-
-
-
+    alerts_by_zone: list[FraudAlertZonePoint] = Field(default_factory=list)
