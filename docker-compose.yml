@@ -73,7 +73,20 @@ services:
       - mongo_data:/data/db
       - mongo_config:/data/configdb
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "-u",
+          "${MONGO_USER:-terangasafe}",
+          "-p",
+          "${MONGO_PASSWORD:-terangasafe_pwd}",
+          "--authenticationDatabase",
+          "admin",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping').ok",
+        ]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -145,8 +158,8 @@ services:
       FRAUD_MODEL_VERSION: ${FRAUD_MODEL_VERSION:-local}
       FRAUD_DECISION_THRESHOLD: ${FRAUD_DECISION_THRESHOLD:-0.5}
 
-      CREDIT_MODEL_PATH: ${CREDIT_MODEL_PATH:-}
-      CREDIT_MODEL_VERSION: ${CREDIT_MODEL_VERSION:-}
+      CREDIT_MODEL_PATH: /app/models/credit/modele_scoring_credit_final.pkl
+      CREDIT_MODEL_VERSION: ${CREDIT_MODEL_VERSION:-local}
     env_file:
       - path: .env
         required: false
@@ -178,7 +191,7 @@ services:
     image: dataflow360-frontend-dev:latest
     container_name: dataflow360-frontend
     restart: unless-stopped
-    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 5173"]
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
       CHOKIDAR_USEPOLLING: "true"
@@ -310,7 +323,11 @@ services:
   # 11. Consumer (Data Ing) — consomme Kafka → API
   # ==============================================================
   fraud-consumer:
+    build:
+      context: .
+      dockerfile: streaming/Dockerfile
     image: dataflow360-streaming:latest
+    pull_policy: never
     container_name: dataflow360-fraud-consumer
     restart: unless-stopped
     command: ["python", "consumer.py"]
