@@ -26,7 +26,7 @@ export async function getClientById(clientId: string): Promise<ClientDetail> {
 export async function submitCreditScore(
   form: CreditScoreFormInput
 ): Promise<CreditScoreResponse> {
-  const { data } = await api.post<CreditScoreResponse>("/credit/score", form);
+  const { data } = await api.post<CreditScoreResponse>("/credit/score/auto/", form);
   return data;
 }
 
@@ -34,7 +34,7 @@ export async function getCreditScore(
   applicationId: string
 ): Promise<CreditScoreResponse> {
   const { data } = await api.get<CreditScoreResponse>(
-    `/credit/score/${encodeURIComponent(applicationId)}`
+    `/credit/score/auto/${encodeURIComponent(applicationId)}`
   );
   return data;
 }

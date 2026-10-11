@@ -38,8 +38,7 @@ export function MainLayout() {
               </div>
               <p className="mt-3 max-w-xs text-xs leading-relaxed text-slate-400">
                 Plateforme décisionnelle de détection de fraudes et de scoring
-                de crédit pour le Mobile Money au Sénégal. Les scores sont des
-                aides à la décision, jamais des décisions automatiques.
+                de crédit pour le Mobile Money au Sénégal.
               </p>
             </div>
 
@@ -105,7 +104,7 @@ export function MainLayout() {
               académique · Données synthétiques
             </p>
             <p className="text-[11px] text-slate-600">
-              Aide à la décision · Pas de décision automatique
+              Plateforme d'aide à la décision
             </p>
           </div>
         </div>

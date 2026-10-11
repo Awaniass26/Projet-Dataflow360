@@ -100,14 +100,14 @@ export function DashboardPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader
           title="Tableau de bord décisionnel"
-          subtitle="Vue temps réel — Mobile Money Sénégal · Aide à la décision"
+          subtitle="Mobile Money Sénégal · Aide à la décision"
         />
         <div className="flex items-center gap-2 rounded-full bg-brand-green-soft px-3 py-1.5 text-xs font-semibold text-brand-green">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-green opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-green" />
           </span>
-          Flux live · rafraîchissement auto
+          
         </div>
       </div>
 
@@ -154,7 +154,6 @@ export function DashboardPage() {
         <KpiCard
           title="Alertes en attente"
           value={formatNumber(pending)}
-          hint="À traiter par un analyste"
           accent="gold"
         />
       </div>
@@ -165,11 +164,9 @@ export function DashboardPage() {
             <ShieldAlert className="h-5 w-5 text-brand-blue" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">Priorité fraude</p>
+            <p className="text-sm font-semibold text-slate-800">Volet fraude</p>
             <p className="mt-0.5 text-xs text-slate-600">
-              {pending > 0
-                ? `${pending} alerte(s) HIGH en attente — traiter avant toute validation manuelle.`
-                : "Aucune alerte en attente. Surveillance active."}
+                Alerte sur les comportements frauduleux des transactions en temp réél
             </p>
           </div>
         </div>
@@ -180,8 +177,7 @@ export function DashboardPage() {
           <div>
             <p className="text-sm font-semibold text-slate-800">Risque crédit</p>
             <p className="mt-0.5 text-xs text-slate-600">
-              Score moyen {(kpi.averageCreditScore ?? 0).toFixed(3)}. Les demandes HIGH
-              nécessitent un second regard.
+              Les demandes de credit
             </p>
           </div>
         </div>
@@ -190,10 +186,9 @@ export function DashboardPage() {
             <Activity className="h-5 w-5 text-brand-green" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">Pipeline temps réel</p>
+            <p className="text-sm font-semibold text-slate-800">SenTerangaSafe</p>
             <p className="mt-0.5 text-xs text-slate-600">
-              Producer → Kafka → Consumer → modèle fraude → PostgreSQL. Mise à jour
-              automatique.
+              Plateforme decisionnelle
             </p>
           </div>
         </div>
